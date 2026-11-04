@@ -15,8 +15,9 @@
 | Timestamps | RFC 3339 UTC (`2026-08-02T16:42:19Z`) |
 | Money | String representation, e.g. `"11150.00"` with explicit `currency` field (ISO 4217) |
 | Pagination | Opaque cursor-based for mutable feeds; `next_cursor` in response |
-| Errors | Stable envelope: `{ error_code, message, field_errors, trace_id, retryable }` |
+| Errors | Stable envelope: `{ code, message, field_errors, trace_id, retryable }` |
 | Idempotency | `Idempotency-Key` header on retryable write endpoints |
+| CORS | Explicit comma-separated origins; wildcard origins are prohibited |
 | Content-Type | `application/json` |
 | Authorization | `Authorization: Bearer <JWT>` |
 
@@ -252,6 +253,12 @@ Idempotency-Key: idem_01JDEF...
 // If retried with same key, returns 200 with original result.
 // If different payload with same key, returns 422.
 ```
+
+The API validates client keys as 1–255 printable ASCII characters. Shared helpers
+derive a stable storage key scoped to organization, user, and operation, plus a
+canonical payload fingerprint. A write service must use the durable database
+uniqueness constraint and compare the payload on duplicate keys in its transaction;
+header validation alone does not provide idempotency.
 
 ---
 

@@ -146,7 +146,8 @@ Every API request:
 
 - MFA enforced for all admin/operations roles.
 - Least privilege IAM roles; shared cloud credentials prohibited.
-- All privileged actions create immutable audit events.
+- All privileged actions create immutable audit events in the same transaction as
+  their state change; the audit recorder flushes but does not commit.
 - Time-limited elevated access where applicable.
 - Production access uses SSO.
 

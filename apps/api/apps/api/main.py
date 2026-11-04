@@ -10,10 +10,14 @@ from apps.api.feedback.infrastructure import models as _feedback_models  # noqa:
 from apps.api.identity.infrastructure import models as _identity_models  # noqa: F401
 from apps.api.listings.infrastructure import models as _listing_models  # noqa: F401
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError as PydanticValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.cors import CORSMiddleware
 
 from apps.api.middleware.error_handler import (
     generic_exception_handler,
+    http_exception_handler,
     pydantic_validation_handler,
 )
 from apps.api.middleware.tracing import TraceIdMiddleware
@@ -38,9 +42,25 @@ def create_app() -> FastAPI:
         debug=settings.debug,
     )
 
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(settings.cors_origin_allowlist),
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "Idempotency-Key",
+            "X-Organization-ID",
+            "X-Trace-Id",
+        ],
+        expose_headers=["X-Trace-Id"],
+    )
     app.add_middleware(TraceIdMiddleware)
 
+    app.add_exception_handler(RequestValidationError, pydantic_validation_handler)
     app.add_exception_handler(PydanticValidationError, pydantic_validation_handler)
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(Exception, generic_exception_handler)
 
     app.add_api_route(
