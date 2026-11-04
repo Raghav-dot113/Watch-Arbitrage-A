@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import logging
 
+from apps.api.catalog.infrastructure import models as _catalog_models  # noqa: F401
+from apps.api.identity.infrastructure import models as _identity_models  # noqa: F401
+from apps.api.listings.infrastructure import models as _listing_models  # noqa: F401
 from fastapi import FastAPI
 from pydantic import ValidationError as PydanticValidationError
 
