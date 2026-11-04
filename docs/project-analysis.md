@@ -122,15 +122,18 @@ Decisions below are **engineering recommendations** derived from the SRS and pla
 
 ### 3.3 Decisions Requiring Approval
 
-| Decision | Stakeholders | Context |
-|----------|-------------|---------|
-| **[NEEDS APPROVAL]** Which three sources to integrate first | Product/Legal | Must be approved for access mode, terms, rate limits, display/retention |
-| **[NEEDS APPROVAL]** Which 25 canonical watch references to support | Product/Domain experts | Affects catalog schema, valuation calibration, and dealer onboarding |
-| **[NEEDS APPROVAL]** Amazon Cognito vs alternative OIDC provider | Engineering/Security | SRS permits Cognito or equivalent; selection affects API auth patterns |
-| **[NEEDS APPROVAL]** SQS FIFO vs standard queues per queue | Engineering | FIFO guarantees exactly-once but has throughput limits; standard + idempotency may suffice |
-| **[NEEDS APPROVAL]** Monorepo tooling: Turborepo vs Nx vs pnpm workspaces | Engineering | Affects CI setup, caching, cross-package scripts |
-| **[NEEDS APPROVAL]** WebSocket implementation: in-process vs dedicated service | Engineering | SRS requires WebSocket for real-time updates; scaling model differs |
-| **[NEEDS APPROVAL]** Weekly or daily ingestion schedules per source | Product/Operations | Affects worker scaling and cost |
+> [!IMPORTANT]
+> A comprehensive, audited register of decisions required before MVP implementation is maintained in [`docs/decisions/pre-mvp-decision-register.md`](file:///d:/ChronoArb/docs/decisions/pre-mvp-decision-register.md).
+
+| Decision | Stakeholders | Context | Status / Resolution |
+|----------|-------------|---------|---------------------|
+| **[NEEDS APPROVAL]** Which three sources to integrate first | Product/Legal | Must be approved for access mode, terms, rate limits, display/retention | Open (DEC-02 in register) |
+| **[NEEDS APPROVAL]** Which 25 canonical watch references to support | Product/Domain experts | Affects catalog schema, valuation calibration, and dealer onboarding | Open (DEC-01 in register) |
+| **[NEEDS APPROVAL]** Amazon Cognito vs alternative OIDC provider | Engineering/Security | SRS permits Cognito or equivalent; selection affects API auth patterns and schema (`cognito_sub` vs `oidc_subject`) | Pending formal sign-off (DEC-03 in register; ADR-0006 defines web flow) |
+| SQS FIFO vs standard queues per queue | Engineering | FIFO guarantees exactly-once but has throughput limits; standard + idempotency may suffice | Standard SQS + application idempotency selected per SRS §7.2 & ADR-0001 D6 |
+| Monorepo tooling: Turborepo vs Nx vs pnpm workspaces | Engineering | Affects CI setup, caching, cross-package scripts | Resolved (Turborepo + pnpm workspaces implemented in repo) |
+| WebSocket implementation: in-process vs dedicated service | Engineering | SRS requires WebSocket for real-time updates; scaling model differs | Resolved by ADR-0003 (in-process FastAPI with Redis pub/sub fanout) |
+| **[NEEDS APPROVAL]** Ingestion schedules per source | Product/Operations | Affects worker scaling and cost; must align with NFR-PERF-004 (<10 min detection) | Open (DEC-06 in register; daily/weekly conflicts with NFR-PERF-004) |
 
 ---
 

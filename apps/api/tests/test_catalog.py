@@ -1,12 +1,20 @@
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
+from apps.api.catalog.infrastructure.models import (
+    Alias,
+    Brand,
+    Reference,
+    Source,
+    WatchList,
+    WatchListEntry,
+)
+from apps.api.identity.infrastructure.models import Membership, Organization, User
+from apps.api.infrastructure.models import Base
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
-from apps.api.infrastructure.models import Base
-from apps.api.catalog.infrastructure.models import Brand, Source, Reference, Alias, WatchList, WatchListEntry
-from apps.api.identity.infrastructure.models import Organization, User, Membership
 
 
 @pytest.fixture
@@ -76,9 +84,9 @@ class TestCatalogOrmParity:
 
 class TestPostgresqlDialectCompilation:
     def test_source_rate_policy_compiles_to_jsonb(self):
+        from sqlalchemy import Column, MetaData, Table
         from sqlalchemy.dialects.postgresql import dialect as pg_dialect
         from sqlalchemy.schema import CreateTable
-        from sqlalchemy import MetaData, Table, Column
 
         m = MetaData()
         t = Table("t", m, Column("c", Source.__table__.c.rate_policy.type))
@@ -86,9 +94,9 @@ class TestPostgresqlDialectCompilation:
         assert "JSONB" in sql
 
     def test_reference_attributes_compiles_to_jsonb(self):
+        from sqlalchemy import Column, MetaData, Table
         from sqlalchemy.dialects.postgresql import dialect as pg_dialect
         from sqlalchemy.schema import CreateTable
-        from sqlalchemy import MetaData, Table, Column
 
         m = MetaData()
         t = Table("t", m, Column("c", Reference.__table__.c.attributes.type))
@@ -98,8 +106,9 @@ class TestPostgresqlDialectCompilation:
 
 class TestIdentityRepositories:
     async def test_organization_crud(self, session):
-        from chronoarb.domain.ulid import generate_ulid
         from apps.api.identity.infrastructure.repositories import OrganizationRepository
+
+        from chronoarb.domain.ulid import generate_ulid
 
         repo = OrganizationRepository(session)
         org = Organization(id=generate_ulid("org"), name="Test Org", slug="test-org")
@@ -115,8 +124,9 @@ class TestIdentityRepositories:
         assert found_by_slug.id == org.id
 
     async def test_user_crud(self, session):
-        from chronoarb.domain.ulid import generate_ulid
         from apps.api.identity.infrastructure.repositories import UserRepository
+
+        from chronoarb.domain.ulid import generate_ulid
 
         repo = UserRepository(session)
         user = User(id=generate_ulid("usr"), cognito_sub="cog_1", email="a@b.com")
@@ -128,8 +138,9 @@ class TestIdentityRepositories:
         assert found.email == "a@b.com"
 
     async def test_membership_lookup(self, session):
-        from chronoarb.domain.ulid import generate_ulid
         from apps.api.identity.infrastructure.repositories import MembershipRepository
+
+        from chronoarb.domain.ulid import generate_ulid
 
         org = Organization(id=generate_ulid("org"), name="O", slug="o")
         user = User(id=generate_ulid("usr"), cognito_sub="c1", email="x@y.com")
@@ -146,8 +157,9 @@ class TestIdentityRepositories:
         assert found.role == "dealer"
 
     async def test_membership_cross_tenant_returns_none(self, session):
-        from chronoarb.domain.ulid import generate_ulid
         from apps.api.identity.infrastructure.repositories import MembershipRepository
+
+        from chronoarb.domain.ulid import generate_ulid
 
         org1 = Organization(id=generate_ulid("org"), name="O1", slug="o1")
         org2 = Organization(id=generate_ulid("org"), name="O2", slug="o2")
@@ -166,8 +178,9 @@ class TestIdentityRepositories:
 
 class TestCatalogRepositories:
     async def test_brand_lookup_by_name(self, session):
-        from chronoarb.domain.ulid import generate_ulid
         from apps.api.catalog.infrastructure.repositories import BrandRepository
+
+        from chronoarb.domain.ulid import generate_ulid
 
         brand = Brand(id=generate_ulid("brd"), name="Rolex", slug="rolex")
         session.add(brand)
@@ -178,8 +191,9 @@ class TestCatalogRepositories:
         assert found is not None
 
     async def test_reference_lookup_by_brand_and_code(self, session):
-        from chronoarb.domain.ulid import generate_ulid
         from apps.api.catalog.infrastructure.repositories import ReferenceRepository
+
+        from chronoarb.domain.ulid import generate_ulid
 
         brand = Brand(id=generate_ulid("brd"), name="Omega", slug="omega")
         ref = Reference(id=generate_ulid("ref"), brand_id=brand.id, ref_code="310.30.42")
@@ -191,8 +205,9 @@ class TestCatalogRepositories:
         assert found is not None
 
     async def test_watchlist_tenant_isolation(self, session):
-        from chronoarb.domain.ulid import generate_ulid
         from apps.api.catalog.infrastructure.repositories import WatchListRepository
+
+        from chronoarb.domain.ulid import generate_ulid
 
         org_a = Organization(id=generate_ulid("org"), name="A", slug="a")
         org_b = Organization(id=generate_ulid("org"), name="B", slug="b")
@@ -239,11 +254,13 @@ class TestForeignKeyEnforcementCatalog:
 
 class TestSchemas:
     def test_org_orm_to_response(self):
-        from apps.api.identity.api.schemas import OrganizationResponse
-        from chronoarb.domain.ulid import generate_ulid
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        now = datetime.now(timezone.utc)
+        from apps.api.identity.api.schemas import OrganizationResponse
+
+        from chronoarb.domain.ulid import generate_ulid
+
+        now = datetime.now(UTC)
         org = Organization(id=generate_ulid("org"), name="T", slug="t",
                            created_at=now, updated_at=now)
         schema = OrganizationResponse.model_validate(org)

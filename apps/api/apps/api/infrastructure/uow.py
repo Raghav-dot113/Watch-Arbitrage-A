@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-
 from apps.api.infrastructure.database import async_session as default_sessionmaker
 from apps.api.infrastructure.repository import BaseRepository, TenantRepository
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 class UnitOfWork:

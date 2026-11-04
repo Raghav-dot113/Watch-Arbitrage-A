@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 import sqlalchemy as sa
+from apps.api.billing.domain import SubscriptionStatus
 from apps.api.infrastructure.models import Base, ULIDMixin
 from sqlalchemy import ForeignKey, PrimaryKeyConstraint, Text
 from sqlalchemy.dialects.postgresql import ENUM, TIMESTAMP
@@ -41,7 +42,7 @@ class Subscription(ULIDMixin, Base):
     )
     stripe_customer_id: Mapped[str | None] = mapped_column(Text(), nullable=True)
     stripe_subscription_id: Mapped[str | None] = mapped_column(Text(), nullable=True)
-    status: Mapped[str] = mapped_column(_subscription_status, nullable=False)
+    status: Mapped[SubscriptionStatus] = mapped_column(_subscription_status, nullable=False)
     plan_id: Mapped[str | None] = mapped_column(Text(), nullable=True)
     current_period_start: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True

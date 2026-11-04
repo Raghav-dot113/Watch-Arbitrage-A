@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from fastapi import Request, status
-from fastapi.responses import JSONResponse
-
 from apps.api.deps import get_db_status
 from apps.api.schemas import ReadyResponse
+from fastapi import Request, status
+from fastapi.responses import JSONResponse
 
 
 async def ready_handler(request: Request) -> JSONResponse:

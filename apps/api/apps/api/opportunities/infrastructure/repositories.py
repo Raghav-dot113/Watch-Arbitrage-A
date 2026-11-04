@@ -25,6 +25,8 @@ from apps.api.valuation.infrastructure.models import Valuation
 from sqlalchemy import and_, func, literal, or_, select
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.sql.selectable import Select, Subquery
 
 from chronoarb.domain.errors import ValidationError
 
@@ -43,7 +45,7 @@ class OpportunityRepository(TenantRepository[Opportunity]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(session, Opportunity)
 
-    def _latest_versions(self):
+    def _latest_versions(self) -> Subquery:
         return (
             select(
                 Opportunity.organization_id.label("organization_id"),
@@ -54,7 +56,7 @@ class OpportunityRepository(TenantRepository[Opportunity]):
             .subquery("latest_opportunity_versions")
         )
 
-    def _feed_query(self, user_id: str | None = None):
+    def _feed_query(self, user_id: str | None = None) -> Select[*tuple[Any, ...]]:
         latest = self._latest_versions()
         my_decision = (
             select(Feedback.decision)
@@ -75,10 +77,24 @@ class OpportunityRepository(TenantRepository[Opportunity]):
                 Opportunity.material_version.label("material_version"),
                 Opportunity.state.label("state"),
                 Opportunity.published_at.label("published_at"),
+                Opportunity.state_changed_at.label("state_changed_at"),
+                Opportunity.created_at.label("created_at"),
                 Opportunity.organization_id.label("organization_id"),
                 Opportunity.listing_id.label("listing_id"),
                 Opportunity.valuation_id.label("valuation_id"),
+                Valuation.created_at.label("valuation_created_at"),
+                Valuation.config_version.label("config_version"),
+                Valuation.expected_net_resale.label("expected_net_resale"),
+                Valuation.low_estimate.label("low_estimate"),
+                Valuation.high_estimate.label("high_estimate"),
+                Valuation.comparable_count.label("comparable_count"),
+                Valuation.sample_dispersion.label("sample_dispersion"),
+                Valuation.cost_breakdown.label("cost_breakdown"),
+                Valuation.adjustment_details.label("adjustment_details"),
+                Valuation.risk_reserve_details.label("risk_reserve_details"),
                 Reference.id.label("reference_id"),
+                Reference.generation.label("generation"),
+                Reference.attributes.label("reference_attributes"),
                 Brand.name.label("brand_name"),
                 Reference.ref_code.label("ref_code"),
                 Reference.model_name.label("model_name"),
@@ -94,6 +110,18 @@ class OpportunityRepository(TenantRepository[Opportunity]):
                 NormalizedListing.seller_geography.label("seller_geography"),
                 ParsedListing.listing_price.label("listing_price"),
                 ParsedListing.price_currency.label("listing_price_currency"),
+                ParsedListing.description.label("listing_description"),
+                ParsedListing.external_url.label("external_url"),
+                ParsedListing.listed_at.label("listed_at"),
+                ParsedListing.parsed_attributes.label("parsed_attributes"),
+                NormalizedListing.normalized_price.label("normalized_price"),
+                NormalizedListing.normalized_currency.label("normalized_currency"),
+                NormalizedListing.match_confidence.label("match_confidence"),
+                NormalizedListing.match_method.label("match_method"),
+                NormalizedListing.match_features.label("match_features"),
+                NormalizedListing.fx_rate.label("fx_rate"),
+                NormalizedListing.fx_source.label("fx_source"),
+                NormalizedListing.fx_date.label("fx_date"),
                 Valuation.all_in_acquisition.label("all_in_acquisition"),
                 Valuation.expected_exit_price.label("expected_exit_price"),
                 Valuation.exit_price_currency.label("exit_price_currency"),
@@ -186,6 +214,7 @@ class OpportunityRepository(TenantRepository[Opportunity]):
                 )
             )
 
+        sort_column: ColumnElement[datetime | Decimal]
         if sort == "newest":
             sort_column = func.coalesce(Opportunity.published_at, Opportunity.created_at)
         elif sort == "score_desc":
@@ -245,6 +274,70 @@ class OpportunityRepository(TenantRepository[Opportunity]):
         result = await self.session.execute(statement)
         return result.mappings().one_or_none()
 
+    async def get_current_for_update(
+        self, opportunity_id: str, organization_id: str
+    ) -> Opportunity | None:
+        latest = self._latest_versions()
+        result = await self.session.execute(
+            select(Opportunity)
+            .join(
+                latest,
+                and_(
+                    Opportunity.organization_id == latest.c.organization_id,
+                    Opportunity.listing_id == latest.c.listing_id,
+                    Opportunity.material_version == latest.c.material_version,
+                ),
+            )
+            .where(
+                Opportunity.id == opportunity_id,
+                Opportunity.organization_id == organization_id,
+            )
+            .with_for_update(of=Opportunity)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_reference_id(self, opportunity_id: str, organization_id: str) -> str | None:
+        result = await self.session.execute(
+            select(NormalizedListing.reference_id)
+            .join(Opportunity, Opportunity.listing_id == NormalizedListing.id)
+            .where(
+                Opportunity.id == opportunity_id,
+                Opportunity.organization_id == organization_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def list_version_summaries(
+        self, listing_id: str, organization_id: str
+    ) -> list[RowMapping]:
+        result = await self.session.execute(
+            select(
+                Opportunity.id.label("id"),
+                Opportunity.listing_id.label("listing_id"),
+                Opportunity.material_version.label("material_version"),
+                Opportunity.state.label("state"),
+                Opportunity.score.label("score"),
+                Opportunity.published_at.label("published_at"),
+                Opportunity.state_changed_at.label("state_changed_at"),
+                Opportunity.created_at.label("created_at"),
+                Valuation.id.label("valuation_id"),
+                Valuation.model_version.label("model_version"),
+                Valuation.cost_assumptions_version.label("cost_assumptions_version"),
+                Valuation.expected_exit_price.label("expected_exit_price"),
+                Valuation.exit_price_currency.label("exit_price_currency"),
+                Valuation.expected_net_profit.label("expected_net_profit"),
+                Valuation.roi.label("roi"),
+                Valuation.confidence.label("confidence"),
+            )
+            .join(Valuation, Valuation.id == Opportunity.valuation_id)
+            .where(
+                Opportunity.listing_id == listing_id,
+                Opportunity.organization_id == organization_id,
+            )
+            .order_by(Opportunity.material_version.desc())
+        )
+        return list(result.mappings().all())
+
     async def list_versions(self, listing_id: str, organization_id: str) -> list[Opportunity]:
         result = await self.session.execute(
             select(Opportunity)
@@ -256,7 +349,7 @@ class OpportunityRepository(TenantRepository[Opportunity]):
         )
         return list(result.scalars().all())
 
-    async def get_by_id(self, id: str, organization_id: str) -> Opportunity | None:
+    async def get_by_id(self, id: str, organization_id: str) -> Opportunity | None:  # type: ignore[override]
         result = await self.session.execute(
             self._feed_query()
             .where(
@@ -264,5 +357,14 @@ class OpportunityRepository(TenantRepository[Opportunity]):
                 Opportunity.organization_id == organization_id,
             )
             .with_only_columns(Opportunity)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_any_by_id(self, opportunity_id: str, organization_id: str) -> Opportunity | None:
+        result = await self.session.execute(
+            select(Opportunity).where(
+                Opportunity.id == opportunity_id,
+                Opportunity.organization_id == organization_id,
+            )
         )
         return result.scalar_one_or_none()

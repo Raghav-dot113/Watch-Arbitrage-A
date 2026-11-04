@@ -11,31 +11,31 @@ Rule: do the first unticked task whose dependencies are ticked. One task per cha
 - [x] B07 settings, dev auth, auth context, RBAC — added local-only HS256 dev tokens, verified identity/tenant resolution from membership records, server-side role permissions and platform-ops allowlisting; API suite: 112 passed.
 - [x] B08 error envelope, CORS, idempotency helper, audit helper — normalized HTTP/validation errors, explicit-origin CORS, scoped idempotency keys and payload fingerprints, and transaction-friendly audit recording; API suite: 128 passed.
 - [x] B09 identity + catalog routes — added authenticated identity/profile and organization APIs, tenant-scoped catalog/reference and watch-list APIs, typed success envelopes, role-gated watch-list writes, and integration coverage; B09 tests: 9 passed.
-- [ ] B10 opportunities feed + detail routes
-- [ ] B11 feedback, history, trade outcome + state machine
-- [ ] B12 alerts + activity routes
-- [ ] B13 settings, billing, admin routes
-- [ ] B14 seed part 1 (orgs, users, catalog, sources)
-- [ ] B15 seed part 2 (listings -> valuations -> opportunities)
-- [ ] B16 seed part 3 (alerts, feedback, outcomes, billing, flags, audit)
+- [x] B10 opportunities feed + detail routes — added authenticated tenant-scoped feed/detail APIs with cursor filters, decision context, valuation and listing lineage, and ADR-0004 freshness fields; preserved feed pagination metadata in the web client; API: 140 passed, web: 97 passed, strict mypy/Ruff/typecheck/import contracts passed.
+- [x] B11 feedback, history, trade outcome + state machine — added tenant-scoped version history, audited/idempotent feedback and purchased-trade outcome routes, and locked published-to-decision state transitions; API suite: 144 passed, strict mypy/Ruff/import-boundary checks passed.
+- [x] B12 alerts + activity routes — added tenant-scoped alert-rule lifecycle, idempotent test-notification outbox requests, per-user delivery history, and team activity/outcome reads; API suite: 146 passed, strict mypy/Ruff/import-boundary checks passed.
+- [x] B13 settings, billing, admin routes — added validated organization settings, encrypted provider integrations, Stripe checkout/portal/webhooks, audited admin operations, migration, configuration, and contract docs; API suite: 151 passed, B13 mypy/Ruff and migration rendering passed.
+- [x] B14 seed part 1 (orgs, users, catalog, sources) — created `apps/api/apps/api/seed/` package with idempotent seed runner (`seed_database()`, `reset_and_seed()`), seed data definitions (2 orgs, 5 users, 4 memberships, 6 brands, 5 sources, 15 references), CLI entry point (`python -m apps.api.seed [--reset]`), and 15 tests; ruff clean, mypy clean on seed files, 15/15 tests pass.
+- [x] B15 seed part 2 (listings -> valuations -> opportunities) — extended seed package with `SeedSnapshot`, `SeedParsedListing`, `SeedNormalizedListing`, `SeedValuation`, `SeedOpportunity` definitions (4 snapshots, 4 parsed listings, 4 normalized listings, 4 valuations, 5 opportunities across demo/acme-orgs), idempotent runner extensions keyed on natural keys (snapshot: source+external_id+adapter_version+checksum; normalized: source+external_id; valuation: listing+model_version; opportunity: org+listing+material_version), JSON Decimal sanitization for SQLite JSON columns, FK chain integrity (snapshot→parsed→normalized→valuation→opportunity), `reset_and_seed` cleanup order extended, and 10 new tests (25 total); ruff clean, 25/25 tests pass.
+- [x] B16 seed part 3 (alerts, feedback, outcomes, billing, flags, audit) — added idempotent demo alert rules/deliveries, lifecycle-consistent feedback, trade outcomes, subscriptions, tenant-scoped flags, and audit entries; reset clears records in FK order; 28 seed tests and 179 API tests pass, seed mypy/Ruff/import-boundary checks pass.
 - [ ] B17 OpenAPI export + freshness test + Makefile targets
 
 ## Frontend
-- [ ] F01 deps, vitest, api-client package
-- [ ] F02 auth route handlers + route protection
-- [ ] F03 AuthProvider + login page
-- [ ] F04 api layer, query hooks, formatters
-- [ ] F05 shared UI states/components
-- [ ] F06 shell: user menu, move design preview
-- [ ] F07 opportunities feed page
-- [ ] F08 opportunity detail page
-- [ ] F09 decision actions + outcome form
-- [ ] F10 watches pages
-- [ ] F11 alerts page
-- [ ] F12 activity page
-- [ ] F13 settings (organization, integrations, billing)
-- [ ] F14 onboarding
-- [ ] F15 admin console
+- [x] F01 deps, vitest, api-client package — vitest 2.1 + jsdom + testing-library configured in apps/web with a passing smoke test that imports @chronoarb/api-client; new packages/api-client-ts workspace package with a typed fetch client (HealthResponse/ReadyResponse, HttpError) and tsconfig path mapping.
+- [x] F02 auth route handlers + route protection — session lib (JWT sign/verify), login/session/logout route handlers, middleware protecting /opportunities,/watches,/alerts,/activity,/settings with redirect to /login; 19 tests pass.
+- [x] F03 AuthProvider + login page — React context provider with useAuth hook, client session API, login page at /login with form handling and navigation on success; integrated into root layout; 7 tests pass.
+- [x] F04 api layer, query hooks, formatters — TanStack Query v5 added; api layer with typed transport for /api/v1/opportunities, /api/v1/identity/me, /health, /ready; QueryClientProvider integrated into Providers; hooks useOpportunities/useIdentity/useHealth; currency/date/relative-time formatters; all api tests passing (apiClient.get/getEnvelope properly mocked); 31 tests pass.
+- [x] F05 shared UI states/components — LoadingState, EmptyState, ErrorState (with retry), DataTable, Card, PageContainer with barrel export; built on MUI + dark design tokens, accessible (aria labels, screen-reader text, keyboard row navigation); 13 tests pass.
+- [x] F06 shell: user menu, move design preview — UserMenu dropdown (profile, organization, sign out) wired to useAuth; desktop AppBar with avatar trigger added to AppShell; DesignPreview design-token showcase component added to ui barrel; 9 new tests pass.
+- [x] F07 opportunities feed page — replaced placeholder with a real feed page using useOpportunities hook, DataTable with state chips (published/dismissed/contacted/purchased/expired), score, expected profit, ROI, and relative-time published date; row click navigates to /opportunities/[id]; handles loading, error, and empty states; 6 new tests pass.
+- [x] F08 opportunity detail page — full detail view with valuation table, confidence, comparable count, versions, state chip, and Back to feed link; Card accepts `sx` prop; 6 tests pass.
+- [x] F09 decision actions + outcome form — Contacted/Dismissed/Purchased feedback buttons via `recordOpportunityFeedback` (POST), trade outcome dialog via `recordTradeOutcome` (POST); `useRecordFeedback`/`useRecordTradeOutcome` TanStack Query mutations with query invalidation; MUI v9 Dialog with TextField form; `post()` added to ApiClient; 4 new tests added (10 total on detail page).
+- [x] F10 watches pages — replaced placeholder with real watch list management using useWatchlists/useCreateWatchList/useUpdateWatchList/useDeleteWatchList hooks; list view with entries, create/edit/delete dialogs via MUI v9; `delete()` added to ApiClient; watchlist API functions and types added; 4 new tests added.
+- [x] F11 alerts page — replaced placeholder with full alert rule management using useAlertRules/useCreateAlertRule/useUpdateAlertRule/useDeleteAlertRule/useRequestAlertTest/useAlertDeliveries hooks; list view with channels/cooldown/status, deliveries panel, create/edit/delete dialogs, test notification dialog; alert API functions and types added; `AlertChannel`/`DeliveryStatus` types added; 13 new tests added (8 API + 5 page).
+- [x] F12 activity page — replaced placeholder with full activity feed and trade outcomes view using useActivity/useTradeOutcomes hooks; activity items with event type chips, decision notes, trade details; outcomes section with acquisition/resale/profit details; `ActivityItem` and `TradeOutcome` types added; activity API functions added; 7 new tests added (2 API + 5 page).
+- [x] F13 settings (organization, integrations, billing) — replaced placeholder with tabbed settings page (Organization/Billing/Integrations); org settings get/patch with currency/timezone/default fees; billing subscription/checkout/portal; integrations with Telegram link/unlink and push device register/unregister; `FeeDefaults`, `OrganizationSettingsResponse`, `SubscriptionResponse`, `IntegrationStatusResponse`, `TelegramLinkResponse`, `PushDeviceResponse` types added; 17 new tests added (10 API + 7 page).
+- [x] F14 onboarding — replaced placeholder with two-step onboarding flow using useCreateOrganization hook; step 1 creates organization (name, slug auto-generated from name), step 2 sets currency/timezone via organization settings patch; `createOrganization` API function added to identity layer; `OrganizationCreateRequest` type added; `post()` mock added to api tests; 6 new tests added (1 API + 5 page).
+- [x] F15 admin console — built admin console at /admin with 5 tabs (Sources, Feature Flags, Audit Events, Unmatched Listings, Duplicate Groups); sources toggle enable/disable, feature flag edit (enabled/rollout_pct/org_ids), unmatched listing resolve dialog; added `patch`/`put` methods to ApiClient; admin API types, api layer, TanStack Query hooks; nav item added; 13 API tests + 12 page tests; vitest 178 passed across 32 files; tsc --noEmit clean.
 
 ## Quality
 - [ ] Q01 Playwright journeys

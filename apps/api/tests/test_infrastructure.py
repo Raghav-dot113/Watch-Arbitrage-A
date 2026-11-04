@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import Text, event
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import Mapped, mapped_column
-
+from apps.api.identity.infrastructure.models import Membership, Organization
 from apps.api.infrastructure.models import Base, TimestampMixin, ULIDMixin
 from apps.api.infrastructure.repository import BaseRepository, TenantRepository
 from apps.api.infrastructure.uow import UnitOfWork
-from apps.api.identity.infrastructure.models import Organization, Membership
+from sqlalchemy import Text, event
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import Mapped, mapped_column
 
 
 class TestModel(ULIDMixin, TimestampMixin, Base):

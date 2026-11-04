@@ -25,21 +25,15 @@ class ReferencePage:
 
 class BrandRepository(BaseRepository[Brand]):
     async def list_all_ordered(self) -> list[Brand]:
-        result = await self.session.execute(
-            select(Brand).order_by(Brand.name, Brand.id)
-        )
+        result = await self.session.execute(select(Brand).order_by(Brand.name, Brand.id))
         return list(result.scalars().all())
 
     async def get_by_name(self, name: str) -> Brand | None:
-        result = await self.session.execute(
-            select(Brand).where(Brand.name == name)
-        )
+        result = await self.session.execute(select(Brand).where(Brand.name == name))
         return result.scalar_one_or_none()
 
     async def get_by_slug(self, slug: str) -> Brand | None:
-        result = await self.session.execute(
-            select(Brand).where(Brand.slug == slug)
-        )
+        result = await self.session.execute(select(Brand).where(Brand.slug == slug))
         return result.scalar_one_or_none()
 
 
@@ -48,9 +42,10 @@ class SourceRepository(BaseRepository[Source]):
 
 
 class ReferenceRepository(BaseRepository[Reference]):
-    async def get_by_brand_and_ref_code(
-        self, brand_id: str, ref_code: str
-    ) -> Reference | None:
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session)
+
+    async def get_by_brand_and_ref_code(self, brand_id: str, ref_code: str) -> Reference | None:
         result = await self.session.execute(
             select(Reference)
             .where(Reference.brand_id == brand_id)
@@ -81,10 +76,10 @@ class ReferenceRepository(BaseRepository[Reference]):
         self,
         *,
         q: str | None = None,
-        active_only: bool = True,
         brand_id: str | None = None,
         cursor: str | None = None,
         limit: int = 25,
+        active_only: bool = True,
     ) -> ReferencePage:
         if not 1 <= limit <= 100:
             raise ValueError("limit must be between 1 and 100")
@@ -179,7 +174,5 @@ class WatchListRepository:
 
 class AliasRepository(BaseRepository[Alias]):
     async def find_by_alias_text(self, alias_text: str) -> list[Alias]:
-        result = await self.session.execute(
-            select(Alias).where(Alias.alias_text == alias_text)
-        )
+        result = await self.session.execute(select(Alias).where(Alias.alias_text == alias_text))
         return list(result.scalars().all())

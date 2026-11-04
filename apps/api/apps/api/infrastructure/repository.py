@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from typing import TypeVar
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
-
-from apps.api.infrastructure.database import async_session
 
 Model = TypeVar("Model", bound=DeclarativeBase)
 
@@ -78,7 +76,7 @@ class TenantRepository[Model](BaseRepository[Model]):
     ) -> list[Model]:
         result = await self.session.execute(
             select(model_cls)
-            .where(getattr(model_cls, "organization_id") == organization_id)
+            .where(model_cls.organization_id == organization_id)
             .offset(offset)
             .limit(limit)
         )

@@ -3,9 +3,8 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from sqlalchemy import text
-
 from apps.api.infrastructure.database import engine
+from sqlalchemy import text
 
 logger = logging.getLogger("chronoarb.api")
 

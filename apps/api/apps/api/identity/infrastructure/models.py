@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import JSON, Text, UniqueConstraint, ForeignKey
+from apps.api.infrastructure.models import Base, TimestampMixin, ULIDMixin
+from sqlalchemy import JSON, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
-
-from apps.api.infrastructure.models import Base, TimestampMixin, ULIDMixin
 
 
 class Organization(ULIDMixin, TimestampMixin, Base):
@@ -19,7 +18,7 @@ class Organization(ULIDMixin, TimestampMixin, Base):
         JSON().with_variant(JSONB(), "postgresql"), nullable=True
     )
 
-    memberships: Mapped[list["Membership"]] = relationship(back_populates="organization")
+    memberships: Mapped[list[Membership]] = relationship(back_populates="organization")
 
     def __repr__(self) -> str:
         return f"<Organization {self.slug}>"
@@ -32,7 +31,7 @@ class User(ULIDMixin, TimestampMixin, Base):
     email: Mapped[str] = mapped_column(Text(), unique=True, nullable=False)
     display_name: Mapped[str | None] = mapped_column(Text(), nullable=True)
 
-    memberships: Mapped[list["Membership"]] = relationship(
+    memberships: Mapped[list[Membership]] = relationship(
         back_populates="user", foreign_keys="Membership.user_id"
     )
 
@@ -56,7 +55,7 @@ class Membership(ULIDMixin, Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
         nullable=False,
     )
