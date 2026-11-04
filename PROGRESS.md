@@ -8,7 +8,7 @@ Rule: do the first unticked task whose dependencies are ticked. One task per cha
 - [x] B04 alerts, feedback, billing, operations ORM models — added eight migration-matched tables, startup registration, column parity and global idempotency tests; 10 focused tests and all 83 API tests pass.
 - [x] B05 tenant repositories + keyset pagination — added checksum-validated cursors, latest-version joined opportunity feed, scoped feature repositories, and isolation/paging/query-count coverage; focused tests 26 passed and API suite 94 passed.
 - [x] B06 cost model (domain) + property tests — added versioned Decimal/Money cost assumptions, acquisition/resale breakdowns, profit/ROI calculations, and Hypothesis financial-identity tests; domain suite: 42 passed.
-- [ ] B07 settings, dev auth, auth context, RBAC
+- [x] B07 settings, dev auth, auth context, RBAC — added local-only HS256 dev tokens, verified identity/tenant resolution from membership records, server-side role permissions and platform-ops allowlisting; API suite: 112 passed.
 - [ ] B08 error envelope, CORS, idempotency helper, audit helper
 - [ ] B09 identity + catalog routes
 - [ ] B10 opportunities feed + detail routes

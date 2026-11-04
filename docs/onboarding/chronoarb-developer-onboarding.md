@@ -493,6 +493,33 @@ curl http://localhost:8000/health
 # {"data":{"status":"ok","trace_id":"trc_..."}}
 ```
 
+### Local API authentication
+
+Protected API routes use development JWT authentication when `CHRONOARB_AUTH_MODE=dev`.
+Set `CHRONOARB_DEV_JWT_SECRET` in your untracked `.env` to a unique random value of at
+least 32 bytes. For example, generate one with:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+After a local user and organization membership exist, issue a short-lived token using
+that user's `cognito_sub`:
+
+```bash
+python -c "from apps.api.identity.api.auth import issue_dev_token; print(issue_dev_token('USER_COGNITO_SUB'))"
+```
+
+Send it as `Authorization: Bearer <token>`. The token identifies the user only; the API
+loads their role and organization membership from the database. If the user belongs to
+multiple organizations, select one with `X-Organization-ID`; membership is checked
+before the organization context is accepted. Local platform-operator subjects must be
+explicitly listed in `CHRONOARB_PLATFORM_OPS_SUBJECTS`.
+
+Development tokens are disabled outside `local` and `test`. OIDC mode fails closed until
+the production OIDC verifier is implemented; do not deploy protected routes with
+development authentication.
+
 ### Python 3.14 + asyncpg Workaround
 
 The local API uses SQLite (`aiosqlite`) as the database driver because `asyncpg 0.31.0` has unresolved SSL negotiation issues on Python 3.14.6. Production and CI use Python 3.13 + PostgreSQL. See ADR-0009 for full details. The SQLite default is configured in `apps/api/apps/api/settings.py`:
