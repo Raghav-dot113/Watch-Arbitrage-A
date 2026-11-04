@@ -4,9 +4,11 @@ import logging
 
 from apps.api.alerts.infrastructure import models as _alert_models  # noqa: F401
 from apps.api.billing.infrastructure import models as _billing_models  # noqa: F401
+from apps.api.catalog.api.routes import router as catalog_router
 from apps.api.catalog.infrastructure import models as _catalog_models  # noqa: F401
 from apps.api.duplicates.infrastructure import models as _duplicate_models  # noqa: F401
 from apps.api.feedback.infrastructure import models as _feedback_models  # noqa: F401
+from apps.api.identity.api.routes import router as identity_router
 from apps.api.identity.infrastructure import models as _identity_models  # noqa: F401
 from apps.api.listings.infrastructure import models as _listing_models  # noqa: F401
 from fastapi import FastAPI
@@ -75,6 +77,8 @@ def create_app() -> FastAPI:
         methods=["GET"],
         include_in_schema=False,
     )
+    app.include_router(identity_router)
+    app.include_router(catalog_router)
 
     logger.info("app_started", extra={"trace_id": "bootstrap"})
 

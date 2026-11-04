@@ -133,6 +133,25 @@ This is intentional: operational endpoints are consumed by machines (ALB target 
 | PUT | `/catalog/watch-lists/{id}` | Update watch list |
 | DELETE | `/catalog/watch-lists/{id}` | Delete watch list |
 
+#### B09 route behavior
+
+- Implemented identity routes are `GET /identity/me`, `POST /identity/organizations`,
+  `GET`/`PATCH /identity/organizations/{org_id}`, and
+  `GET /identity/organizations/{org_id}/members`. The profile endpoint returns the
+  authenticated user and all memberships, including organizations, without requiring
+  an organization selector. Organization creation atomically creates the caller's
+  owner membership. Organization reads and updates are limited to the selected
+  organization; updates require the `members:manage` permission.
+- Implemented catalog routes are `GET /catalog/brands`,
+  `GET /catalog/references` (active references only; optional `q`, `brand_id`,
+  `cursor`, and `limit` filters), `GET /catalog/references/{ref_id}`, and
+  watch-list list/create/replace/delete routes. Watch-list operations are scoped to
+  the authenticated organization; PUT replaces the name and complete reference set.
+- These routes use the standard `{ data, meta }` success envelope and emit typed
+  OpenAPI response schemas. Reference market statistics/price history and identity
+  invitations/member-role changes/removal remain deferred until their valuation and
+  invitation workflows are implemented.
+
 ### 4.3 Opportunities (`/api/v1/opportunities`)
 
 | Method | Path | Purpose |

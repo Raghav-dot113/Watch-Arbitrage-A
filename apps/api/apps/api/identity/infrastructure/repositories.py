@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from apps.api.identity.infrastructure.models import Organization, User, Membership
 from apps.api.infrastructure.repository import BaseRepository, TenantRepository
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 
 class OrganizationRepository(BaseRepository[Organization]):
@@ -43,6 +43,17 @@ class MembershipRepository(TenantRepository[Membership]):
     async def list_members(self, organization_id: str) -> list[Membership]:
         result = await self.session.execute(
             select(Membership)
+            .options(joinedload(Membership.user))
             .where(Membership.organization_id == organization_id)
+            .order_by(Membership.created_at, Membership.id)
+        )
+        return list(result.scalars().all())
+
+    async def list_for_user(self, user_id: str) -> list[Membership]:
+        result = await self.session.execute(
+            select(Membership)
+            .options(joinedload(Membership.organization))
+            .where(Membership.user_id == user_id)
+            .order_by(Membership.created_at, Membership.organization_id)
         )
         return list(result.scalars().all())

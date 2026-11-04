@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class WatchListCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    reference_ids: list[str] = Field(default_factory=list, max_length=500)
+
+
+class WatchListUpdateRequest(WatchListCreateRequest):
+    pass
 
 
 class BrandResponse(BaseModel):
@@ -38,6 +47,17 @@ class ReferenceResponse(BaseModel):
     created_at: datetime
 
 
+class ReferenceDetailResponse(ReferenceResponse):
+    attributes: dict[str, object] | None = None
+    aliases: list[str] = Field(default_factory=list)
+
+
+class ReferencePageResponse(BaseModel):
+    items: list[ReferenceResponse]
+    next_cursor: str | None
+    has_more: bool
+
+
 class WatchListResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -45,6 +65,7 @@ class WatchListResponse(BaseModel):
     organization_id: str
     name: str
     created_at: datetime
+    entries: list[WatchListEntryResponse] = Field(default_factory=list)
 
 
 class WatchListEntryResponse(BaseModel):

@@ -73,6 +73,13 @@ _ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
 
 
 @dataclass(frozen=True)
+class AuthenticatedUser:
+    subject: str
+    user_id: str
+    email: str
+
+
+@dataclass(frozen=True)
 class AuthContext:
     subject: str
     user_id: str
@@ -123,13 +130,10 @@ def issue_dev_token(
     return f"{signing_input.decode('ascii')}.{_base64url_encode(signature)}"
 
 
-async def get_current_auth_context(
+async def get_authenticated_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_BEARER)],
     session: Annotated[AsyncSession, Depends(get_db)],
-    organization_selector: Annotated[
-        str | None, Header(alias="X-Organization-ID", max_length=128)
-    ] = None,
-) -> AuthContext:
+) -> AuthenticatedUser:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise _unauthorized()
     if settings.auth_mode != "dev":
@@ -154,6 +158,17 @@ async def get_current_auth_context(
     if user is None:
         raise _unauthorized()
 
+    return AuthenticatedUser(subject=subject, user_id=user.id, email=user.email)
+
+
+async def get_current_auth_context(
+    identity: Annotated[AuthenticatedUser, Depends(get_authenticated_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    organization_selector: Annotated[
+        str | None, Header(alias="X-Organization-ID", max_length=128)
+    ] = None,
+) -> AuthContext:
+    subject = identity.subject
     if subject in settings.platform_ops_subject_allowlist:
         if organization_selector is not None:
             raise HTTPException(
@@ -162,8 +177,8 @@ async def get_current_auth_context(
             )
         return AuthContext(
             subject=subject,
-            user_id=user.id,
-            email=user.email,
+            user_id=identity.user_id,
+            email=identity.email,
             organization_id=None,
             role=Role.PLATFORM_OPS,
         )
@@ -171,7 +186,7 @@ async def get_current_auth_context(
     membership_query = (
         select(Membership, Organization)
         .join(Organization, Organization.id == Membership.organization_id)
-        .where(Membership.user_id == user.id)
+        .where(Membership.user_id == identity.user_id)
     )
     if organization_selector is not None:
         membership_query = membership_query.where(
@@ -209,8 +224,8 @@ async def get_current_auth_context(
 
     return AuthContext(
         subject=subject,
-        user_id=user.id,
-        email=user.email,
+        user_id=identity.user_id,
+        email=identity.email,
         organization_id=membership.organization_id,
         role=role,
     )

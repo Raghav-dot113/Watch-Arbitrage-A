@@ -10,7 +10,7 @@ Rule: do the first unticked task whose dependencies are ticked. One task per cha
 - [x] B06 cost model (domain) + property tests — added versioned Decimal/Money cost assumptions, acquisition/resale breakdowns, profit/ROI calculations, and Hypothesis financial-identity tests; domain suite: 42 passed.
 - [x] B07 settings, dev auth, auth context, RBAC — added local-only HS256 dev tokens, verified identity/tenant resolution from membership records, server-side role permissions and platform-ops allowlisting; API suite: 112 passed.
 - [x] B08 error envelope, CORS, idempotency helper, audit helper — normalized HTTP/validation errors, explicit-origin CORS, scoped idempotency keys and payload fingerprints, and transaction-friendly audit recording; API suite: 128 passed.
-- [ ] B09 identity + catalog routes
+- [x] B09 identity + catalog routes — added authenticated identity/profile and organization APIs, tenant-scoped catalog/reference and watch-list APIs, typed success envelopes, role-gated watch-list writes, and integration coverage; B09 tests: 9 passed.
 - [ ] B10 opportunities feed + detail routes
 - [ ] B11 feedback, history, trade outcome + state machine
 - [ ] B12 alerts + activity routes
