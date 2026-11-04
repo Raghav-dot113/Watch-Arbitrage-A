@@ -6,7 +6,7 @@ Rule: do the first unticked task whose dependencies are ticked. One task per cha
 - [x] B02 listings ORM models — added migration-matched ORM tables, startup registration, and SQLite FK/unique/chain coverage; 7 focused tests and all 64 API tests pass.
 - [x] B03 valuation, duplicates, opportunities ORM models — added five migration-matched tables, startup registration, and parity/FK/tenant/unique tests; 9 focused tests and all 73 API tests pass.
 - [x] B04 alerts, feedback, billing, operations ORM models — added eight migration-matched tables, startup registration, column parity and global idempotency tests; 10 focused tests and all 83 API tests pass.
-- [ ] B05 tenant repositories + keyset pagination
+- [x] B05 tenant repositories + keyset pagination — added checksum-validated cursors, latest-version joined opportunity feed, scoped feature repositories, and isolation/paging/query-count coverage; focused tests 26 passed and API suite 94 passed.
 - [ ] B06 cost model (domain) + property tests
 - [ ] B07 settings, dev auth, auth context, RBAC
 - [ ] B08 error envelope, CORS, idempotency helper, audit helper

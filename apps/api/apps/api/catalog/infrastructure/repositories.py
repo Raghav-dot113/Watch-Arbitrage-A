@@ -1,17 +1,26 @@
 from __future__ import annotations
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from dataclasses import dataclass
 
 from apps.api.catalog.infrastructure.models import (
-    Brand,
-    Source,
-    Reference,
-    WatchList,
-    WatchListEntry,
     Alias,
+    Brand,
+    Reference,
+    Source,
+    WatchList,
 )
+from apps.api.infrastructure.pagination import decode_cursor, encode_cursor
 from apps.api.infrastructure.repository import BaseRepository, TenantRepository
+from sqlalchemy import and_, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
+
+
+@dataclass(frozen=True)
+class ReferencePage:
+    items: list[Reference]
+    next_cursor: str | None
+    has_more: bool
 
 
 class BrandRepository(BaseRepository[Brand]):
@@ -43,9 +52,82 @@ class ReferenceRepository(BaseRepository[Reference]):
         )
         return result.scalar_one_or_none()
 
+    async def search(
+        self,
+        *,
+        q: str | None = None,
+        brand_id: str | None = None,
+        cursor: str | None = None,
+        limit: int = 25,
+    ) -> ReferencePage:
+        if not 1 <= limit <= 100:
+            raise ValueError("limit must be between 1 and 100")
+        statement = select(Reference)
+        if q:
+            search_term = f"%{q}%"
+            statement = statement.where(
+                or_(
+                    Reference.ref_code.ilike(search_term),
+                    Reference.model_name.ilike(search_term),
+                    Reference.generation.ilike(search_term),
+                )
+            )
+        if brand_id is not None:
+            statement = statement.where(Reference.brand_id == brand_id)
+        if cursor is not None:
+            decoded = decode_cursor(cursor)
+            if decoded.sort_key != "ref_code_asc":
+                from chronoarb.domain.errors import ValidationError
+
+                raise ValidationError("Cursor sort does not match reference search")
+            statement = statement.where(
+                or_(
+                    Reference.ref_code > decoded.sort_value,
+                    and_(
+                        Reference.ref_code == decoded.sort_value,
+                        Reference.id > decoded.id,
+                    ),
+                )
+            )
+        result = await self.session.execute(
+            statement.order_by(Reference.ref_code, Reference.id).limit(limit + 1)
+        )
+        rows = list(result.scalars().all())
+        has_more = len(rows) > limit
+        items = rows[:limit]
+        next_cursor = None
+        if has_more and items:
+            last = items[-1]
+            next_cursor = encode_cursor("ref_code_asc", last.ref_code, last.id)
+        return ReferencePage(items, next_cursor, has_more)
+
+    async def list_references(self, *, cursor: str | None = None, limit: int = 25) -> ReferencePage:
+        return await self.search(cursor=cursor, limit=limit)
+
 
 class WatchListRepository(TenantRepository[WatchList]):
-    pass
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(session, WatchList)
+
+    async def get_by_id(self, id: str, organization_id: str) -> WatchList | None:
+        result = await self.session.execute(
+            select(WatchList)
+            .options(joinedload(WatchList.entries))
+            .where(
+                WatchList.id == id,
+                WatchList.organization_id == organization_id,
+            )
+        )
+        return result.unique().scalar_one_or_none()
+
+    async def list_with_entries(self, organization_id: str) -> list[WatchList]:
+        result = await self.session.execute(
+            select(WatchList)
+            .options(joinedload(WatchList.entries))
+            .where(WatchList.organization_id == organization_id)
+            .order_by(WatchList.created_at.desc(), WatchList.id.desc())
+        )
+        return list(result.unique().scalars().all())
 
 
 class AliasRepository(BaseRepository[Alias]):
