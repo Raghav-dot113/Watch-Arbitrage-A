@@ -5,7 +5,7 @@ Rule: do the first unticked task whose dependencies are ticked. One task per cha
 - [x] B01 toolchain + baseline (no code) — Python 3.13.17 venv and `.env.example` set up; pytest: 57 collected, 2 collection errors, 0 run; Ruff: 51 errors; mypy: 1 duplicate-module error; import-linter: config not readable; web typecheck and build passed.
 - [x] B02 listings ORM models — added migration-matched ORM tables, startup registration, and SQLite FK/unique/chain coverage; 7 focused tests and all 64 API tests pass.
 - [x] B03 valuation, duplicates, opportunities ORM models — added five migration-matched tables, startup registration, and parity/FK/tenant/unique tests; 9 focused tests and all 73 API tests pass.
-- [ ] B04 alerts, feedback, billing, operations ORM models
+- [x] B04 alerts, feedback, billing, operations ORM models — added eight migration-matched tables, startup registration, column parity and global idempotency tests; 10 focused tests and all 83 API tests pass.
 - [ ] B05 tenant repositories + keyset pagination
 - [ ] B06 cost model (domain) + property tests
 - [ ] B07 settings, dev auth, auth context, RBAC
