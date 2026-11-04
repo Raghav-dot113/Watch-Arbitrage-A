@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from apps.api.catalog.infrastructure import models as _catalog_models  # noqa: F401
+from apps.api.duplicates.infrastructure import models as _duplicate_models  # noqa: F401
 from apps.api.identity.infrastructure import models as _identity_models  # noqa: F401
 from apps.api.listings.infrastructure import models as _listing_models  # noqa: F401
 from fastapi import FastAPI
@@ -13,9 +14,11 @@ from apps.api.middleware.error_handler import (
     pydantic_validation_handler,
 )
 from apps.api.middleware.tracing import TraceIdMiddleware
+from apps.api.opportunities.infrastructure import models as _opportunity_models  # noqa: F401
 from apps.api.routes.health import health_handler
 from apps.api.routes.ready import ready_handler
 from apps.api.settings import settings
+from apps.api.valuation.infrastructure import models as _valuation_models  # noqa: F401
 
 logging.basicConfig(
     level=settings.log_level,
