@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+from apps.api.schemas import HealthResponse
 from fastapi import Request
 from fastapi.responses import JSONResponse
-
-from apps.api.schemas import HealthResponse
 
 
 async def health_handler(request: Request) -> JSONResponse:

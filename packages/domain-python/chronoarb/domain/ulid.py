@@ -33,9 +33,7 @@ class UlidGenerator:
             self._last_timestamp = timestamp
 
         ts_encoded: str = self._encode_base32(timestamp, 10)
-        rand_encoded: str = self._encode_base32(
-            int.from_bytes(os.urandom(10), "big"), 16
-        )
+        rand_encoded: str = self._encode_base32(int.from_bytes(os.urandom(10), "big"), 16)
         seq_encoded: str = self._encode_base32(self._sequence, 2)
 
         return f"{prefix}{self.PREFIX_SEPARATOR}{ts_encoded}{rand_encoded}{seq_encoded}"

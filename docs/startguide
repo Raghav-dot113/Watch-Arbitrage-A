@@ -1,0 +1,14 @@
+To start front end use this command 
+    pnpm --filter @chronoarb/web dev4
+
+To start backend do this
+    navigate to backend
+        cd apps/api
+
+    setup python environment
+        python -m venv .venv
+
+    after this a .venv folder to activate this run .\.venv\Scripts\Activate.ps1 
+
+    install python dependencies python -m pip install --upgrade pip
+    

@@ -1,30 +1,23 @@
 from __future__ import annotations
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from apps.api.catalog.infrastructure.models import (
-    Brand,
-    Source,
-    Reference,
-    WatchList,
-    WatchListEntry,
     Alias,
+    Brand,
+    Reference,
+    Source,
+    WatchList,
 )
 from apps.api.infrastructure.repository import BaseRepository, TenantRepository
+from sqlalchemy import select
 
 
 class BrandRepository(BaseRepository[Brand]):
     async def get_by_name(self, name: str) -> Brand | None:
-        result = await self.session.execute(
-            select(Brand).where(Brand.name == name)
-        )
+        result = await self.session.execute(select(Brand).where(Brand.name == name))
         return result.scalar_one_or_none()
 
     async def get_by_slug(self, slug: str) -> Brand | None:
-        result = await self.session.execute(
-            select(Brand).where(Brand.slug == slug)
-        )
+        result = await self.session.execute(select(Brand).where(Brand.slug == slug))
         return result.scalar_one_or_none()
 
 
@@ -33,9 +26,7 @@ class SourceRepository(BaseRepository[Source]):
 
 
 class ReferenceRepository(BaseRepository[Reference]):
-    async def get_by_brand_and_ref_code(
-        self, brand_id: str, ref_code: str
-    ) -> Reference | None:
+    async def get_by_brand_and_ref_code(self, brand_id: str, ref_code: str) -> Reference | None:
         result = await self.session.execute(
             select(Reference)
             .where(Reference.brand_id == brand_id)
@@ -50,7 +41,5 @@ class WatchListRepository(TenantRepository[WatchList]):
 
 class AliasRepository(BaseRepository[Alias]):
     async def find_by_alias_text(self, alias_text: str) -> list[Alias]:
-        result = await self.session.execute(
-            select(Alias).where(Alias.alias_text == alias_text)
-        )
+        result = await self.session.execute(select(Alias).where(Alias.alias_text == alias_text))
         return list(result.scalars().all())

@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = False
     log_level: str = "INFO"
+    auth_mode: str = "local"
+    dev_jwt_secret: str = ""
+    cognito_jwks_url: str = ""
+    cognito_issuer: str = ""
+    cognito_audience: str = ""
+    jwks_cache_seconds: int = 300
+    stripe_webhook_secret: str = ""
 
     # Default is SQLite (aiosqlite) for local development.
     # PostgreSQL async drivers (asyncpg, psycopg) have unresolved compatibility

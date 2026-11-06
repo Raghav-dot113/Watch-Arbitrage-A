@@ -34,3 +34,32 @@ class MembershipResponse(BaseModel):
     role: str
     invited_by: str | None = None
     created_at: datetime
+
+
+class UserOrganizationResponse(BaseModel):
+    id: str
+    name: str
+    slug: str
+    role: str
+    created_at: datetime
+
+
+class ErrorEnvelope(BaseModel):
+    code: str
+    message: str
+    field_errors: dict[str, list[str]] | None = None
+    trace_id: str
+    retryable: bool = False
+
+
+class ErrorResponse(BaseModel):
+    error: ErrorEnvelope
+
+
+class OrganizationListMeta(BaseModel):
+    trace_id: str
+
+
+class OrganizationListResponse(BaseModel):
+    data: list[UserOrganizationResponse]
+    meta: OrganizationListMeta

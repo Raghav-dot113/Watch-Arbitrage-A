@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import JSON, Boolean, Text, UniqueConstraint, ForeignKey
 import sqlalchemy as sa
+from apps.api.infrastructure.models import Base, ULIDMixin
+from sqlalchemy import JSON, Boolean, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
-
-from apps.api.infrastructure.models import Base, TimestampMixin, ULIDMixin
 
 
 class Brand(ULIDMixin, Base):
@@ -18,12 +17,12 @@ class Brand(ULIDMixin, Base):
     slug: Mapped[str] = mapped_column(Text(), unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
         nullable=False,
     )
 
-    references: Mapped[list["Reference"]] = relationship(back_populates="brand")
+    references: Mapped[list[Reference]] = relationship(back_populates="brand")
 
 
 class Source(ULIDMixin, Base):
@@ -42,7 +41,7 @@ class Source(ULIDMixin, Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
         nullable=False,
     )
@@ -57,20 +56,18 @@ class WatchList(ULIDMixin, Base):
     name: Mapped[str] = mapped_column(Text(), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
         nullable=False,
     )
 
-    entries: Mapped[list["WatchListEntry"]] = relationship(back_populates="watch_list")
+    entries: Mapped[list[WatchListEntry]] = relationship(back_populates="watch_list")
 
 
 class Reference(ULIDMixin, Base):
     __tablename__ = "references"
 
-    brand_id: Mapped[str] = mapped_column(
-        Text(), ForeignKey("brands.id"), nullable=False
-    )
+    brand_id: Mapped[str] = mapped_column(Text(), ForeignKey("brands.id"), nullable=False)
     ref_code: Mapped[str] = mapped_column(Text(), nullable=False)
     model_name: Mapped[str | None] = mapped_column(Text(), nullable=True)
     generation: Mapped[str | None] = mapped_column(Text(), nullable=True)
@@ -82,7 +79,7 @@ class Reference(ULIDMixin, Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
         nullable=False,
     )
@@ -90,15 +87,13 @@ class Reference(ULIDMixin, Base):
     __table_args__ = (UniqueConstraint("brand_id", "ref_code", name="uq_references_brand_ref"),)
 
     brand: Mapped[Brand] = relationship(back_populates="references")
-    aliases: Mapped[list["Alias"]] = relationship(back_populates="reference")
+    aliases: Mapped[list[Alias]] = relationship(back_populates="reference")
 
 
 class Alias(ULIDMixin, Base):
     __tablename__ = "aliases"
 
-    reference_id: Mapped[str] = mapped_column(
-        Text(), ForeignKey("references.id"), nullable=False
-    )
+    reference_id: Mapped[str] = mapped_column(Text(), ForeignKey("references.id"), nullable=False)
     alias_text: Mapped[str] = mapped_column(Text(), nullable=False)
     source: Mapped[str | None] = mapped_column(Text(), nullable=True)
 
@@ -110,15 +105,11 @@ class Alias(ULIDMixin, Base):
 class WatchListEntry(ULIDMixin, Base):
     __tablename__ = "watch_list_entries"
 
-    watch_list_id: Mapped[str] = mapped_column(
-        Text(), ForeignKey("watch_lists.id"), nullable=False
-    )
-    reference_id: Mapped[str] = mapped_column(
-        Text(), ForeignKey("references.id"), nullable=False
-    )
+    watch_list_id: Mapped[str] = mapped_column(Text(), ForeignKey("watch_lists.id"), nullable=False)
+    reference_id: Mapped[str] = mapped_column(Text(), ForeignKey("references.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
         nullable=False,
     )

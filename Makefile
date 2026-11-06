@@ -18,7 +18,35 @@ MIGRATE_TMP  := /tmp/chronoarb_migrate.sql
 export CHRONOARB_DATABASE_URL = $(PG_URL)
 export PATH := $(shell pwd)/.venv/bin:$(PATH)
 
-.PHONY: db-migrate db-reset db-rollback db-status db-revision
+.PHONY: db-migrate db-reset db-rollback db-status db-revision openapi-export openapi-check test-api test-domain lint format-check typecheck import-lint check
+
+PYTHON ?= python
+
+openapi-export:
+	@$(PYTHON) -m apps.api.export_openapi --export
+
+openapi-check:
+	@$(PYTHON) -m apps.api.export_openapi --check
+
+test-api:
+	@$(PYTHON) -m pytest apps/api/tests
+
+test-domain:
+	@$(PYTHON) -m pytest packages/domain-python/tests
+
+lint:
+	@ruff check apps/api/apps/api apps/api/tests packages/domain-python/chronoarb packages/domain-python/tests packages/source-adapters apps/worker
+
+format-check:
+	@ruff format --check apps/api/apps/api apps/api/tests packages/domain-python/chronoarb packages/domain-python/tests packages/source-adapters apps/worker
+
+typecheck:
+	@mypy apps/api/apps/api packages/domain-python/chronoarb
+
+import-lint:
+	@lint-imports --config .importlinter
+
+check: openapi-check test-api test-domain lint format-check typecheck
 
 ## Apply all pending migrations to PostgreSQL
 db-migrate:

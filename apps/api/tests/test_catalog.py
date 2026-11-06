@@ -1,12 +1,21 @@
 from __future__ import annotations
 
-import pytest
-from sqlalchemy import event
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from datetime import UTC
 
+import pytest
+from apps.api.catalog.infrastructure.models import (
+    Alias,
+    Brand,
+    Reference,
+    Source,
+    WatchList,
+    WatchListEntry,
+)
+from apps.api.identity.infrastructure.models import Membership, Organization, User
 from apps.api.infrastructure.models import Base
-from apps.api.catalog.infrastructure.models import Brand, Source, Reference, Alias, WatchList, WatchListEntry
-from apps.api.identity.infrastructure.models import Organization, User, Membership
+from sqlalchemy import event
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 
 @pytest.fixture
@@ -71,14 +80,16 @@ class TestCatalogOrmParity:
         assert WatchListEntry.__tablename__ == "watch_list_entries"
 
     def test_watch_list_entry_unique_constraints(self):
-        assert "uq_watch_list_entries_list_ref" in [c.name for c in WatchListEntry.__table__.constraints]
+        assert "uq_watch_list_entries_list_ref" in [
+            c.name for c in WatchListEntry.__table__.constraints
+        ]
 
 
 class TestPostgresqlDialectCompilation:
     def test_source_rate_policy_compiles_to_jsonb(self):
+        from sqlalchemy import Column, MetaData, Table
         from sqlalchemy.dialects.postgresql import dialect as pg_dialect
         from sqlalchemy.schema import CreateTable
-        from sqlalchemy import MetaData, Table, Column
 
         m = MetaData()
         t = Table("t", m, Column("c", Source.__table__.c.rate_policy.type))
@@ -86,9 +97,9 @@ class TestPostgresqlDialectCompilation:
         assert "JSONB" in sql
 
     def test_reference_attributes_compiles_to_jsonb(self):
+        from sqlalchemy import Column, MetaData, Table
         from sqlalchemy.dialects.postgresql import dialect as pg_dialect
         from sqlalchemy.schema import CreateTable
-        from sqlalchemy import MetaData, Table, Column
 
         m = MetaData()
         t = Table("t", m, Column("c", Reference.__table__.c.attributes.type))
@@ -98,8 +109,9 @@ class TestPostgresqlDialectCompilation:
 
 class TestIdentityRepositories:
     async def test_organization_crud(self, session):
-        from chronoarb.domain.ulid import generate_ulid
         from apps.api.identity.infrastructure.repositories import OrganizationRepository
+
+        from chronoarb.domain.ulid import generate_ulid
 
         repo = OrganizationRepository(session)
         org = Organization(id=generate_ulid("org"), name="Test Org", slug="test-org")
@@ -115,8 +127,9 @@ class TestIdentityRepositories:
         assert found_by_slug.id == org.id
 
     async def test_user_crud(self, session):
-        from chronoarb.domain.ulid import generate_ulid
         from apps.api.identity.infrastructure.repositories import UserRepository
+
+        from chronoarb.domain.ulid import generate_ulid
 
         repo = UserRepository(session)
         user = User(id=generate_ulid("usr"), cognito_sub="cog_1", email="a@b.com")
@@ -128,15 +141,18 @@ class TestIdentityRepositories:
         assert found.email == "a@b.com"
 
     async def test_membership_lookup(self, session):
-        from chronoarb.domain.ulid import generate_ulid
         from apps.api.identity.infrastructure.repositories import MembershipRepository
+
+        from chronoarb.domain.ulid import generate_ulid
 
         org = Organization(id=generate_ulid("org"), name="O", slug="o")
         user = User(id=generate_ulid("usr"), cognito_sub="c1", email="x@y.com")
         session.add_all([org, user])
         await session.flush()
 
-        mem = Membership(id=generate_ulid("mem"), organization_id=org.id, user_id=user.id, role="dealer")
+        mem = Membership(
+            id=generate_ulid("mem"), organization_id=org.id, user_id=user.id, role="dealer"
+        )
         session.add(mem)
         await session.commit()
 
@@ -146,8 +162,9 @@ class TestIdentityRepositories:
         assert found.role == "dealer"
 
     async def test_membership_cross_tenant_returns_none(self, session):
-        from chronoarb.domain.ulid import generate_ulid
         from apps.api.identity.infrastructure.repositories import MembershipRepository
+
+        from chronoarb.domain.ulid import generate_ulid
 
         org1 = Organization(id=generate_ulid("org"), name="O1", slug="o1")
         org2 = Organization(id=generate_ulid("org"), name="O2", slug="o2")
@@ -155,7 +172,9 @@ class TestIdentityRepositories:
         session.add_all([org1, org2, user])
         await session.flush()
 
-        mem = Membership(id=generate_ulid("mem"), organization_id=org1.id, user_id=user.id, role="dealer")
+        mem = Membership(
+            id=generate_ulid("mem"), organization_id=org1.id, user_id=user.id, role="dealer"
+        )
         session.add(mem)
         await session.commit()
 
@@ -166,8 +185,9 @@ class TestIdentityRepositories:
 
 class TestCatalogRepositories:
     async def test_brand_lookup_by_name(self, session):
-        from chronoarb.domain.ulid import generate_ulid
         from apps.api.catalog.infrastructure.repositories import BrandRepository
+
+        from chronoarb.domain.ulid import generate_ulid
 
         brand = Brand(id=generate_ulid("brd"), name="Rolex", slug="rolex")
         session.add(brand)
@@ -178,8 +198,9 @@ class TestCatalogRepositories:
         assert found is not None
 
     async def test_reference_lookup_by_brand_and_code(self, session):
-        from chronoarb.domain.ulid import generate_ulid
         from apps.api.catalog.infrastructure.repositories import ReferenceRepository
+
+        from chronoarb.domain.ulid import generate_ulid
 
         brand = Brand(id=generate_ulid("brd"), name="Omega", slug="omega")
         ref = Reference(id=generate_ulid("ref"), brand_id=brand.id, ref_code="310.30.42")
@@ -191,8 +212,9 @@ class TestCatalogRepositories:
         assert found is not None
 
     async def test_watchlist_tenant_isolation(self, session):
-        from chronoarb.domain.ulid import generate_ulid
         from apps.api.catalog.infrastructure.repositories import WatchListRepository
+
+        from chronoarb.domain.ulid import generate_ulid
 
         org_a = Organization(id=generate_ulid("org"), name="A", slug="a")
         org_b = Organization(id=generate_ulid("org"), name="B", slug="b")
@@ -214,44 +236,53 @@ class TestCatalogRepositories:
 class TestForeignKeyEnforcementCatalog:
     async def test_watchlist_orphan_org_rejected(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         wl = WatchList(id=generate_ulid("wl"), organization_id="nonexistent", name="Bad")
         session.add(wl)
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             await session.commit()
         await session.rollback()
 
     async def test_watchlist_entry_orphan_rejected(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         entry = WatchListEntry(id=generate_ulid("wle"), watch_list_id="fake", reference_id="fake")
         session.add(entry)
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             await session.commit()
         await session.rollback()
 
     async def test_alias_orphan_rejected(self, session):
         from chronoarb.domain.ulid import generate_ulid
-        alias = Alias(id=generate_ulid("als"), reference_id="fake", alias_text="test", source="manual")
+
+        alias = Alias(
+            id=generate_ulid("als"), reference_id="fake", alias_text="test", source="manual"
+        )
         session.add(alias)
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             await session.commit()
         await session.rollback()
 
 
 class TestSchemas:
     def test_org_orm_to_response(self):
-        from apps.api.identity.api.schemas import OrganizationResponse
-        from chronoarb.domain.ulid import generate_ulid
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        now = datetime.now(timezone.utc)
-        org = Organization(id=generate_ulid("org"), name="T", slug="t",
-                           created_at=now, updated_at=now)
+        from apps.api.identity.api.schemas import OrganizationResponse
+
+        from chronoarb.domain.ulid import generate_ulid
+
+        now = datetime.now(UTC)
+        org = Organization(
+            id=generate_ulid("org"), name="T", slug="t", created_at=now, updated_at=now
+        )
         schema = OrganizationResponse.model_validate(org)
         assert schema.id == org.id
         assert schema.name == "T"
 
     def test_reference_no_internal_fields_exposed(self):
         from apps.api.catalog.api.schemas import ReferenceResponse
+
         fields = ReferenceResponse.model_fields.keys()
         assert "attributes" not in fields
         assert "__tablename__" not in fields

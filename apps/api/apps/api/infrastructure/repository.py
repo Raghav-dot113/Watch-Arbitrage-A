@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from typing import TypeVar
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
-
-from apps.api.infrastructure.database import async_session
 
 Model = TypeVar("Model", bound=DeclarativeBase)
 
@@ -29,9 +27,7 @@ class BaseRepository[Model]:
         limit: int = 50,
         offset: int = 0,
     ) -> list[Model]:
-        result = await self.session.execute(
-            select(model_cls).offset(offset).limit(limit)
-        )
+        result = await self.session.execute(select(model_cls).offset(offset).limit(limit))
         return list(result.scalars().all())
 
     async def count(self, model_cls: type[Model]) -> int:
@@ -49,7 +45,11 @@ class BaseRepository[Model]:
 
 
 class TenantRepository[Model](BaseRepository[Model]):
-    def __init__(self, session: AsyncSession | None = None, model_cls: type[Model] | None = None) -> None:
+    def __init__(
+        self,
+        session: AsyncSession | None = None,
+        model_cls: type[Model] | None = None,
+    ) -> None:
         super().__init__(session)
         if model_cls is not None and "organization_id" not in model_cls.__table__.columns:
             raise TypeError(
@@ -78,7 +78,7 @@ class TenantRepository[Model](BaseRepository[Model]):
     ) -> list[Model]:
         result = await self.session.execute(
             select(model_cls)
-            .where(getattr(model_cls, "organization_id") == organization_id)
+            .where(model_cls.organization_id == organization_id)
             .offset(offset)
             .limit(limit)
         )
