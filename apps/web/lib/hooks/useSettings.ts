@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  createCheckoutSession,
-  createPortalSession,
+  cancelPayPalSubscription,
+  createPayPalSubscription,
   getIntegrationStatus,
   getOrganizationSettings,
   getSubscription,
@@ -11,6 +11,8 @@ import {
   unlinkTelegram,
   unregisterPushDevice,
   type IntegrationStatusResponse,
+  type PayPalCheckoutRequest,
+  type PayPalSubscriptionApprovalResponse,
   type OrganizationSettingsPatchRequest,
   type OrganizationSettingsResponse,
   type PushDeviceResponse,
@@ -48,16 +50,28 @@ export function useSubscription() {
   });
 }
 
-export function useCreateCheckoutSession() {
+export function useCreatePayPalSubscription() {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: Parameters<typeof createCheckoutSession>[0]) =>
-      createCheckoutSession(body),
+    mutationFn: (input: PayPalCheckoutRequest & { idempotency_key: string }) =>
+      createPayPalSubscription(
+        { plan_id: input.plan_id },
+        input.idempotency_key,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    },
   });
 }
 
-export function useCreatePortalSession() {
+export function useCancelPayPalSubscription() {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => createPortalSession(),
+    mutationFn: (idempotencyKey: string) =>
+      cancelPayPalSubscription(idempotencyKey),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    },
   });
 }
 
@@ -103,6 +117,8 @@ export type {
   OrganizationSettingsPatchRequest,
   FeeDefaults,
   SubscriptionResponse,
+  PayPalCheckoutRequest,
+  PayPalSubscriptionApprovalResponse,
   IntegrationStatusResponse,
   PushDeviceResponse,
   TelegramLinkResponse,

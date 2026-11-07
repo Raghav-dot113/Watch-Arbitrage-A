@@ -2,6 +2,7 @@
 
 import React from "react";
 import {
+  Alert,
   Box,
   Button,
   Chip,
@@ -24,8 +25,8 @@ import {
   useOrganizationSettings,
   useUpdateOrganizationSettings,
   useSubscription,
-  useCreateCheckoutSession,
-  useCreatePortalSession,
+  useCreatePayPalSubscription,
+  useCancelPayPalSubscription,
   useIntegrationStatus,
   useLinkTelegram,
   useUnlinkTelegram,
@@ -53,8 +54,34 @@ const FEE_FIELDS: Array<{ key: keyof FeeDefaults; label: string }> = [
   { key: "exit_risk_reserve", label: "Exit risk reserve" },
 ];
 
+function subscribeToLocationSearch(onChange: () => void) {
+  window.addEventListener("popstate", onChange);
+  return () => window.removeEventListener("popstate", onChange);
+}
+
+function getLocationSearch() {
+  return window.location.search;
+}
+
+function getServerLocationSearch() {
+  return "";
+}
+
 export default function SettingsPage() {
-  const [tab, setTab] = React.useState("organization");
+  const [selectedTab, setSelectedTab] = React.useState("organization");
+  const locationSearch = React.useSyncExternalStore(
+    subscribeToLocationSearch,
+    getLocationSearch,
+    getServerLocationSearch,
+  );
+  const checkoutParam = new URLSearchParams(locationSearch).get("checkout");
+  const [dismissedCheckout, setDismissedCheckout] = React.useState<string | null>(null);
+  const checkoutResult =
+    (checkoutParam === "success" || checkoutParam === "cancel") &&
+    checkoutParam !== dismissedCheckout
+      ? checkoutParam
+      : null;
+  const tab = checkoutResult ? "billing" : selectedTab;
 
   const { data: settings, isLoading: settingsLoading } = useOrganizationSettings();
   const updateSettings = useUpdateOrganizationSettings();
@@ -66,10 +93,13 @@ export default function SettingsPage() {
   }>({ currency: "", timezone: "", fees: {} });
 
   const { data: subscription } = useSubscription();
-  const createCheckout = useCreateCheckoutSession();
-  const createPortal = useCreatePortalSession();
+  const createPayPalSubscription = useCreatePayPalSubscription();
+  const cancelPayPalSubscription = useCancelPayPalSubscription();
   const [planId, setPlanId] = React.useState("");
   const [checkoutUrl, setCheckoutUrl] = React.useState<string | null>(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false);
+  const [cancelIdempotencyKey, setCancelIdempotencyKey] = React.useState<string | null>(null);
+  const [billingError, setBillingError] = React.useState<string | null>(null);
 
   const { data: integrations } = useIntegrationStatus();
   const linkTelegram = useLinkTelegram();
@@ -100,17 +130,33 @@ export default function SettingsPage() {
   };
 
   const handleCheckout = async () => {
-    if (createCheckout.isPending) return;
-    const result = await createCheckout.mutateAsync({ plan_id: planId });
-    setCheckoutUrl(result.url);
-    window.open(result.url, "_blank");
+    if (createPayPalSubscription.isPending || !planId.trim()) return;
+    setBillingError(null);
+    try {
+      const result = await createPayPalSubscription.mutateAsync({
+        plan_id: planId,
+        idempotency_key: globalThis.crypto.randomUUID(),
+      });
+      setCheckoutUrl(result.url);
+    } catch (error) {
+      setBillingError(
+        error instanceof Error ? error.message : "Unable to start PayPal checkout.",
+      );
+    }
   };
 
-  const handlePortal = async () => {
-    if (createPortal.isPending) return;
-    const result = await createPortal.mutateAsync();
-    setCheckoutUrl(result.url);
-    window.open(result.url, "_blank");
+  const handleCancelSubscription = async () => {
+    if (cancelPayPalSubscription.isPending || cancelIdempotencyKey === null) return;
+    setBillingError(null);
+    try {
+      await cancelPayPalSubscription.mutateAsync(cancelIdempotencyKey);
+      setCancelDialogOpen(false);
+      setCancelIdempotencyKey(null);
+    } catch (error) {
+      setBillingError(
+        error instanceof Error ? error.message : "Unable to cancel the PayPal subscription.",
+      );
+    }
   };
 
   const handleLinkTelegram = async () => {
@@ -156,7 +202,7 @@ export default function SettingsPage() {
       <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
         <Tabs
           value={tab}
-          onChange={(_, newValue) => setTab(newValue as string)}
+          onChange={(_, newValue) => setSelectedTab(newValue as string)}
           sx={{ minWidth: 300 }}
         >
           <Tab label="Organization" value="organization" />
@@ -286,7 +332,7 @@ export default function SettingsPage() {
             </Box>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                Checkout
+                PayPal subscription
               </Typography>
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 <TextField
@@ -294,24 +340,50 @@ export default function SettingsPage() {
                   label="Plan ID"
                   value={planId}
                   onChange={(e) => setPlanId(e.target.value)}
-                  helperText="Stripe plan ID to subscribe to"
+                  helperText="Configured PayPal plan key (for example: pro)"
                 />
                 <Box sx={{ display: "flex", gap: 1 }}>
                   <Button
                     variant="contained"
                     onClick={handleCheckout}
-                    disabled={createCheckout.isPending}
+                    disabled={createPayPalSubscription.isPending || !planId.trim()}
                   >
-                    Start Checkout
+                    {createPayPalSubscription.isPending
+                      ? "Starting..."
+                      : "Continue with PayPal"}
                   </Button>
-                  <Button
-                    variant="outlined"
-                    onClick={handlePortal}
-                    disabled={createPortal.isPending}
-                  >
-                    Customer Portal
-                  </Button>
+                  {subscriptionData?.id &&
+                    ["active", "past_due", "trialing", "unpaid"].includes(
+                      subscriptionData.status,
+                    ) && (
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={() => {
+                          setBillingError(null);
+                          setCancelIdempotencyKey(globalThis.crypto.randomUUID());
+                          setCancelDialogOpen(true);
+                        }}
+                        disabled={cancelPayPalSubscription.isPending}
+                      >
+                        Cancel subscription
+                      </Button>
+                    )}
                 </Box>
+                {billingError && <Alert severity="error">{billingError}</Alert>}
+                {checkoutResult && (
+                  <Alert
+                    severity={checkoutResult === "success" ? "info" : "warning"}
+                    onClose={() => {
+                      setDismissedCheckout(checkoutParam);
+                      setSelectedTab("billing");
+                    }}
+                  >
+                    {checkoutResult === "success"
+                      ? "PayPal returned you to ChronoArb. Your subscription updates after PayPal confirms it."
+                      : "PayPal checkout was canceled. No subscription was activated."}
+                  </Alert>
+                )}
               </Box>
             </Box>
           </Box>
@@ -526,14 +598,63 @@ export default function SettingsPage() {
           maxWidth="sm"
           fullWidth
         >
-          <DialogTitle sx={{ fontWeight: 600 }}>Checkout</DialogTitle>
+          <DialogTitle sx={{ fontWeight: 600 }}>Continue with PayPal</DialogTitle>
           <DialogContent sx={{ py: 2 }}>
-            <Typography variant="body2">
-              Redirecting to Stripe Checkout...
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              Approve the subscription on PayPal. ChronoArb will update its status
+              after receiving PayPal&apos;s verified confirmation.
             </Typography>
+            <Button
+              component="a"
+              href={checkoutUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="contained"
+            >
+              Open PayPal
+            </Button>
           </DialogContent>
         </Dialog>
       )}
+
+      <Dialog
+        open={cancelDialogOpen}
+        onClose={() => {
+          if (!cancelPayPalSubscription.isPending) {
+            setCancelDialogOpen(false);
+            setCancelIdempotencyKey(null);
+          }
+        }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 600 }}>Cancel subscription?</DialogTitle>
+        <DialogContent sx={{ py: 2 }}>
+          <Typography variant="body2">
+            PayPal will cancel this organization&apos;s subscription. You can start a
+            new subscription later.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setCancelDialogOpen(false);
+              setCancelIdempotencyKey(null);
+            }}
+            disabled={cancelPayPalSubscription.isPending}
+          >
+            Keep subscription
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleCancelSubscription}
+            disabled={cancelPayPalSubscription.isPending}
+          >
+            Confirm cancellation
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={telegramDialogOpen}

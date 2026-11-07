@@ -16,9 +16,11 @@ from apps.api.identity.api.auth import (
     issue_dev_token,
     require_permissions,
 )
+from apps.api.identity.api.routes import router as identity_router
 from apps.api.identity.infrastructure.models import Membership, Organization, User
 from apps.api.infrastructure.database import get_db
 from apps.api.infrastructure.models import Base
+from apps.api.middleware.tracing import TraceIdMiddleware
 from apps.api.settings import Settings, settings
 from fastapi import Depends, FastAPI
 from httpx import ASGITransport, AsyncClient
@@ -58,7 +60,9 @@ async def auth_client(
             yield session
 
     application = FastAPI()
+    application.add_middleware(TraceIdMiddleware)
     application.dependency_overrides[get_db] = override_get_db
+    application.include_router(identity_router)
 
     @application.get("/tenant")
     async def read_tenant(
@@ -166,6 +170,62 @@ async def test_authentication_requires_a_valid_bearer_token(auth_client) -> None
     response = await client.get("/tenant", headers={"Authorization": "Bearer invalid"})
     assert response.status_code == 401
     assert response.headers["www-authenticate"] == "Bearer"
+
+
+async def test_local_dev_token_endpoint_issues_token_for_seeded_membership(auth_client) -> None:
+    client, session_factory = auth_client
+    await _seed_user(
+        session_factory,
+        subject="demo-dealer-sub",
+        memberships=(("org_demo", "dealer"),),
+    )
+    async with session_factory() as session:
+        user = await session.get(User, "usr_demo-dealer-sub")
+        assert user is not None
+        user.email = "dealer@demo.example.com"
+        await session.commit()
+
+    response = await client.post(
+        "/api/v1/identity/dev-token",
+        json={"email": "DEALER@DEMO.EXAMPLE.COM"},
+    )
+    assert response.status_code == 200
+    token_data = response.json()["data"]
+    assert token_data["email"] == "dealer@demo.example.com"
+    assert token_data["organization_id"] == "org_demo"
+    assert token_data["role"] == "dealer"
+
+    authorized = await client.get(
+        "/tenant",
+        headers={"Authorization": f"Bearer {token_data['access_token']}"},
+    )
+    assert authorized.status_code == 200
+    assert authorized.json()["organization_id"] == "org_demo"
+
+
+async def test_local_dev_token_endpoint_rejects_unknown_emails(auth_client) -> None:
+    client, _ = auth_client
+
+    response = await client.post(
+        "/api/v1/identity/dev-token",
+        json={"email": "not-seeded@example.test"},
+    )
+
+    assert response.status_code == 401
+
+
+async def test_local_dev_token_endpoint_is_hidden_outside_dev_mode(
+    auth_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, _ = auth_client
+    monkeypatch.setattr(settings, "environment", "production")
+
+    response = await client.post(
+        "/api/v1/identity/dev-token",
+        json={"email": "dealer@example.test"},
+    )
+
+    assert response.status_code == 404
 
 
 async def test_dev_token_expiration_is_enforced(auth_client) -> None:

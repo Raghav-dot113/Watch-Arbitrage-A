@@ -10,6 +10,7 @@ export interface Session {
   orgId?: string | null;
   orgName?: string | null;
   role?: string | null;
+  apiToken?: string;
 }
 
 export type SessionPayload = Session & { iat: number; exp?: number };

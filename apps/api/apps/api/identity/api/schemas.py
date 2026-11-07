@@ -62,6 +62,20 @@ class CurrentUserResponse(BaseModel):
     memberships: list[OrganizationMembershipResponse]
 
 
+class DevelopmentTokenRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+
+
+class DevelopmentTokenResponse(BaseModel):
+    access_token: str
+    user_id: str
+    email: str
+    display_name: str | None
+    organization_id: str
+    organization_name: str
+    role: str
+
+
 class OrganizationMemberResponse(MembershipResponse):
     email: str
     display_name: str | None = None

@@ -5,8 +5,8 @@ import SettingsPage from "./page";
 const mockUseOrganizationSettings = vi.fn();
 const mockUseUpdateOrganizationSettings = vi.fn();
 const mockUseSubscription = vi.fn();
-const mockUseCreateCheckoutSession = vi.fn();
-const mockUseCreatePortalSession = vi.fn();
+const mockUseCreatePayPalSubscription = vi.fn();
+const mockUseCancelPayPalSubscription = vi.fn();
 const mockUseIntegrationStatus = vi.fn();
 const mockUseLinkTelegram = vi.fn();
 const mockUseUnlinkTelegram = vi.fn();
@@ -18,8 +18,8 @@ vi.mock("../../../../lib/hooks/useSettings", () => ({
     mockUseOrganizationSettings(...args),
   useUpdateOrganizationSettings: () => mockUseUpdateOrganizationSettings(),
   useSubscription: (...args: unknown[]) => mockUseSubscription(...args),
-  useCreateCheckoutSession: () => mockUseCreateCheckoutSession(),
-  useCreatePortalSession: () => mockUseCreatePortalSession(),
+  useCreatePayPalSubscription: () => mockUseCreatePayPalSubscription(),
+  useCancelPayPalSubscription: () => mockUseCancelPayPalSubscription(),
   useIntegrationStatus: (...args: unknown[]) =>
     mockUseIntegrationStatus(...args),
   useLinkTelegram: () => mockUseLinkTelegram(),
@@ -62,12 +62,13 @@ const baseIntegrationStatus = {
 };
 
 beforeEach(() => {
+  window.history.replaceState({}, "", "/settings/organization");
   vi.restoreAllMocks();
   mockUseOrganizationSettings.mockReset();
   mockUseUpdateOrganizationSettings.mockReset();
   mockUseSubscription.mockReset();
-  mockUseCreateCheckoutSession.mockReset();
-  mockUseCreatePortalSession.mockReset();
+  mockUseCreatePayPalSubscription.mockReset();
+  mockUseCancelPayPalSubscription.mockReset();
   mockUseIntegrationStatus.mockReset();
   mockUseLinkTelegram.mockReset();
   mockUseUnlinkTelegram.mockReset();
@@ -87,12 +88,18 @@ beforeEach(() => {
     mutateAsync: vi.fn().mockResolvedValue(undefined),
     isPending: false,
   });
-  mockUseCreateCheckoutSession.mockReturnValue({
-    mutateAsync: vi.fn().mockResolvedValue({ session_id: "cs_1", url: "https://checkout.stripe.com" }),
+  mockUseCreatePayPalSubscription.mockReturnValue({
+    mutateAsync: vi.fn().mockResolvedValue({
+      subscription_id: "I_1",
+      url: "https://www.sandbox.paypal.com/approve/I_1",
+    }),
     isPending: false,
   });
-  mockUseCreatePortalSession.mockReturnValue({
-    mutateAsync: vi.fn().mockResolvedValue({ url: "https://billing.stripe.com/portal" }),
+  mockUseCancelPayPalSubscription.mockReturnValue({
+    mutateAsync: vi.fn().mockResolvedValue({
+      ...baseSubscription,
+      status: "canceled",
+    }),
     isPending: false,
   });
   mockUseLinkTelegram.mockReturnValue({
@@ -129,6 +136,52 @@ describe("SettingsPage", () => {
     expect(screen.getByText("Billing & Subscription")).toBeInTheDocument();
     expect(screen.getByText("pro_monthly")).toBeInTheDocument();
     expect(screen.getByText("active")).toBeInTheDocument();
+    expect(screen.getByText("PayPal subscription")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancel subscription/i })).toBeInTheDocument();
+  });
+
+  it("opens billing after returning from PayPal checkout", () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/settings/organization?checkout=success",
+    );
+
+    render(<SettingsPage />);
+
+    expect(screen.getByRole("tab", { name: /billing/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      screen.getByText(/PayPal returned you to ChronoArb/i),
+    ).toBeInTheDocument();
+  });
+
+  it("opens a PayPal approval link after creating a subscription", async () => {
+    const checkoutMutation = vi.fn().mockResolvedValue({
+      subscription_id: "I_1",
+      url: "https://www.sandbox.paypal.com/approve/I_1",
+    });
+    mockUseCreatePayPalSubscription.mockReturnValue({
+      mutateAsync: checkoutMutation,
+      isPending: false,
+    });
+
+    render(<SettingsPage />);
+    fireEvent.click(screen.getByRole("tab", { name: /billing/i }));
+    fireEvent.change(screen.getByRole("textbox", { name: /plan id/i }), {
+      target: { value: "pro_monthly" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /continue with paypal/i }));
+
+    expect(await screen.findByRole("link", { name: /open paypal/i })).toHaveAttribute(
+      "href",
+      "https://www.sandbox.paypal.com/approve/I_1",
+    );
+    expect(checkoutMutation).toHaveBeenCalledWith(
+      expect.objectContaining({ plan_id: "pro_monthly", idempotency_key: expect.any(String) }),
+    );
   });
 
   it("renders integrations tab", () => {

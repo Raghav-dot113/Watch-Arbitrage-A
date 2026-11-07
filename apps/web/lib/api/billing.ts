@@ -1,7 +1,6 @@
 import type {
-  StripeCheckoutRequest,
-  StripePortalResponse,
-  StripeSessionResponse,
+  PayPalCheckoutRequest,
+  PayPalSubscriptionApprovalResponse,
   SubscriptionResponse,
 } from "./types";
 import { apiClient, getAuthHeaders } from "./client";
@@ -17,29 +16,35 @@ export async function getSubscription(): Promise<SubscriptionResponse> {
   return envelope.data;
 }
 
-export async function createCheckoutSession(
-  body: StripeCheckoutRequest,
-): Promise<StripeSessionResponse> {
-  const envelope = await apiClient.getEnvelope<StripeSessionResponse>(
+export async function createPayPalSubscription(
+  body: PayPalCheckoutRequest,
+  idempotencyKey: string,
+): Promise<PayPalSubscriptionApprovalResponse> {
+  const result = await apiClient.post<PayPalSubscriptionApprovalResponse>(
     "/api/v1/billing/checkout",
     {
-      headers: getAuthHeaders(),
+      headers: { ...getAuthHeaders(), "Idempotency-Key": idempotencyKey },
       body: JSON.stringify(body),
     },
   );
-  if (envelope.data === null) {
-    throw new Error("Invalid checkout session response");
+  if (result === null) {
+    throw new Error("Invalid PayPal subscription response");
   }
-  return envelope.data;
+  return result;
 }
 
-export async function createPortalSession(): Promise<StripePortalResponse> {
-  const envelope = await apiClient.getEnvelope<StripePortalResponse>(
-    "/api/v1/billing/portal",
-    { headers: getAuthHeaders() },
+export async function cancelPayPalSubscription(
+  idempotencyKey: string,
+): Promise<SubscriptionResponse> {
+  const result = await apiClient.post<SubscriptionResponse>(
+    "/api/v1/billing/cancel",
+    {
+      headers: { ...getAuthHeaders(), "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({}),
+    },
   );
-  if (envelope.data === null) {
-    throw new Error("Invalid portal session response");
+  if (result === null) {
+    throw new Error("Invalid PayPal cancellation response");
   }
-  return envelope.data;
+  return result;
 }

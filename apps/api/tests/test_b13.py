@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import base64
-import hashlib
-import hmac
 import json
-import time
 from collections.abc import AsyncIterator
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
-from apps.api.billing.application.service import StripeBillingService
+from apps.api.billing.application.service import PayPalBillingService
 from apps.api.billing.infrastructure.models import Subscription
 from apps.api.catalog.infrastructure.models import Brand, Reference, Source
 from apps.api.duplicates.infrastructure.models import DuplicateGroup, DuplicateGroupMember
@@ -22,9 +19,9 @@ from apps.api.infrastructure.models import Base
 from apps.api.integrations.application.crypto import decrypt_provider_secret, digest_token
 from apps.api.integrations.application.service import IntegrationService
 from apps.api.integrations.infrastructure.models import (
+    PayPalWebhookEvent,
     ProviderIntegration,
     PushDevice,
-    StripeWebhookEvent,
 )
 from apps.api.listings.infrastructure.models import (
     NormalizedListing,
@@ -33,7 +30,7 @@ from apps.api.listings.infrastructure.models import (
 )
 from apps.api.main import create_app
 from apps.api.operations.infrastructure.models import FeatureFlag
-from apps.api.settings import settings
+from apps.api.settings import Settings, settings
 from httpx import ASGITransport, AsyncClient
 from pydantic import SecretStr
 from sqlalchemy import event, select
@@ -326,45 +323,104 @@ async def test_b13_integrations_encrypt_tokens_and_scope_unlinking(
     assert disconnected.status_code == 204
 
 
-async def test_b13_stripe_webhook_signature_replay_and_subscription_mapping(
+async def test_b13_paypal_webhook_verification_replay_and_subscription_mapping(
     b13_client: tuple[AsyncClient, async_sessionmaker[AsyncSession]],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client, session_factory = b13_client
-    monkeypatch.setattr(settings, "stripe_webhook_secret", SecretStr("whsec_b13"))
+    monkeypatch.setattr(settings, "paypal_client_id", "client_b13")
+    monkeypatch.setattr(settings, "paypal_client_secret", SecretStr("secret_b13"))
+    monkeypatch.setattr(settings, "paypal_webhook_id", "webhook_b13")
+    async with session_factory() as session:
+        session.add(
+            Subscription(
+                id="sub_b13_paypal",
+                organization_id=_ORG_ID,
+                paypal_subscription_id="I-B13",
+                paypal_approval_url="https://www.sandbox.paypal.com/approve/I-B13",
+                status="unpaid",
+                plan_id="pro",
+            )
+        )
+        await session.commit()
+
     event_payload = json.dumps(
         {
             "id": "evt_b13_subscription",
-            "type": "customer.subscription.updated",
-            "data": {
-                "object": {
-                    "id": "sub_b13",
-                    "customer": "cus_b13",
-                    "status": "active",
-                    "metadata": {"organization_id": _ORG_ID, "plan_id": "pro"},
-                    "current_period_start": 1793750400,
-                    "current_period_end": 1796342400,
-                    "trial_end": None,
-                }
+            "event_type": "BILLING.SUBSCRIPTION.ACTIVATED",
+            "create_time": "2026-11-07T10:00:00Z",
+            "resource": {
+                "id": "I-B13",
+                "custom_id": _ORG_ID,
+                "status": "ACTIVE",
+                "subscriber": {"payer_id": "payer_b13"},
+                "billing_info": {
+                    "last_payment": {"time": "2026-11-01T10:00:00Z"},
+                    "next_billing_time": "2026-12-01T10:00:00Z",
+                    "cycle_executions": [{"tenure_type": "TRIAL", "cycles_remaining": 1}],
+                },
             },
         },
         separators=(",", ":"),
     ).encode()
-    timestamp = int(time.time())
-    signed = str(timestamp).encode() + b"." + event_payload
-    signature = hmac.new(b"whsec_b13", signed, hashlib.sha256).hexdigest()
-    headers = {"Stripe-Signature": f"t={timestamp},v1={signature}"}
-    received = await client.post("/api/v1/billing/webhook", content=event_payload, headers=headers)
-    replay = await client.post("/api/v1/billing/webhook", content=event_payload, headers=headers)
+    webhook_headers = {
+        "PayPal-Auth-Algo": "SHA256withRSA",
+        "PayPal-Cert-Url": "https://api-m.sandbox.paypal.com/cert",
+        "PayPal-Transmission-Id": "transmission_b13",
+        "PayPal-Transmission-Sig": "signature_b13",
+        "PayPal-Transmission-Time": "2026-11-07T10:00:00Z",
+    }
+    verification_calls: list[dict[str, object]] = []
+
+    async def mock_paypal_request(
+        _service: PayPalBillingService,
+        method: str,
+        path: str,
+        payload: dict[str, object] | None = None,
+        *,
+        request_id: str | None = None,
+    ) -> dict[str, str]:
+        assert method == "POST"
+        assert path == "/v1/notifications/verify-webhook-signature"
+        assert request_id is None
+        assert payload is not None
+        verification_calls.append(payload)
+        return {
+            "verification_status": (
+                "SUCCESS" if payload["transmission_sig"] == "signature_b13" else "FAILURE"
+            )
+        }
+
+    monkeypatch.setattr(PayPalBillingService, "_paypal_request", mock_paypal_request)
+    received = await client.post(
+        "/api/v1/billing/webhook",
+        content=event_payload,
+        headers=webhook_headers,
+    )
+    replay = await client.post(
+        "/api/v1/billing/webhook",
+        content=event_payload,
+        headers=webhook_headers,
+    )
+    stale_event = json.loads(event_payload)
+    stale_event["id"] = "evt_b13_stale"
+    stale_event["event_type"] = "BILLING.SUBSCRIPTION.SUSPENDED"
+    stale_event["create_time"] = "2026-11-07T09:00:00Z"
+    stale_event["resource"]["status"] = "SUSPENDED"
+    stale = await client.post(
+        "/api/v1/billing/webhook",
+        content=json.dumps(stale_event).encode(),
+        headers=webhook_headers,
+    )
     invalid = await client.post(
         "/api/v1/billing/webhook",
         content=event_payload,
-        headers={"Stripe-Signature": f"t={timestamp},v1={'0' * 64}"},
+        headers={**webhook_headers, "PayPal-Transmission-Sig": "invalid"},
     )
     oversized = await client.post(
         "/api/v1/billing/webhook",
         content=b"x" * 1_000_001,
-        headers=headers,
+        headers=webhook_headers,
     )
     subscription = await client.get("/api/v1/billing/subscription")
 
@@ -372,78 +428,132 @@ async def test_b13_stripe_webhook_signature_replay_and_subscription_mapping(
     assert received.json()["duplicate"] is False
     assert replay.status_code == 200
     assert replay.json()["duplicate"] is True
+    assert stale.status_code == 200
+    assert stale.json()["duplicate"] is False
     assert invalid.status_code == 400
     assert oversized.status_code == 413
     assert subscription.status_code == 200
-    assert subscription.json()["data"]["status"] == "active"
+    assert subscription.json()["data"]["status"] == "trialing"
     assert subscription.json()["data"]["plan_id"] == "pro"
+    assert verification_calls[0]["webhook_id"] == "webhook_b13"
+    assert verification_calls[0]["webhook_event"]["id"] == "evt_b13_subscription"
 
     async with session_factory() as session:
-        webhook_event = await session.get(StripeWebhookEvent, "evt_b13_subscription")
-        stored = await session.scalars(
-            select(Subscription).where(Subscription.organization_id == _ORG_ID)
-        )
+        webhook_event = await session.get(PayPalWebhookEvent, "evt_b13_subscription")
+        stored = await session.get(Subscription, "sub_b13_paypal")
         assert webhook_event is not None
-        assert len(list(stored.all())) == 1
+        assert stored is not None
+        assert await session.get(PayPalWebhookEvent, "evt_b13_stale") is not None
+        assert stored.status == "trialing"
+        assert stored.paypal_payer_id == "payer_b13"
+        assert stored.current_period_end is not None
+        assert stored.current_period_end.replace(tzinfo=UTC) == datetime(
+            2026, 12, 1, 10, tzinfo=UTC
+        )
 
 
-async def test_b13_billing_provider_configuration_fails_explicitly(
+def test_paypal_api_url_rejects_non_paypal_hosts() -> None:
+    with pytest.raises(ValueError, match="official PayPal API host"):
+        Settings(paypal_api_base_url="https://paypal.example.invalid")
+
+
+async def test_b13_paypal_checkout_is_configured_idempotent_and_cancelable(
     b13_client: tuple[AsyncClient, async_sessionmaker[AsyncSession]],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client, session_factory = b13_client
-    monkeypatch.setattr(settings, "stripe_price_ids", {"pro": "price_b13"})
-    monkeypatch.setattr(settings, "stripe_secret_key", SecretStr(""))
+    monkeypatch.setattr(settings, "paypal_plan_ids", {"pro": "P-PRO-B13"})
+    monkeypatch.setattr(settings, "paypal_client_id", "")
+    monkeypatch.setattr(settings, "paypal_client_secret", SecretStr(""))
 
-    checkout = await client.post("/api/v1/billing/checkout", json={"plan_id": "pro"})
-    unconfigured_plan = await client.post("/api/v1/billing/checkout", json={"plan_id": "missing"})
-    portal = await client.post("/api/v1/billing/portal")
+    checkout_headers = {"Idempotency-Key": "checkout-b13-1"}
+    checkout = await client.post(
+        "/api/v1/billing/checkout",
+        json={"plan_id": "pro"},
+        headers=checkout_headers,
+    )
+    unconfigured_plan = await client.post(
+        "/api/v1/billing/checkout",
+        json={"plan_id": "missing"},
+        headers=checkout_headers,
+    )
+    missing_key = await client.post(
+        "/api/v1/billing/checkout",
+        json={"plan_id": "pro"},
+    )
+    unconfigured_cancel = await client.post(
+        "/api/v1/billing/cancel",
+        headers={"Idempotency-Key": "cancel-b13-1"},
+    )
 
     assert checkout.status_code == 503
     assert unconfigured_plan.status_code == 422
-    assert portal.status_code == 503
+    assert missing_key.status_code == 422
+    assert unconfigured_cancel.status_code == 503
 
-    calls: list[tuple[str, dict[str, str]]] = []
+    monkeypatch.setattr(settings, "paypal_client_id", "client_b13")
+    monkeypatch.setattr(settings, "paypal_client_secret", SecretStr("secret_b13"))
+    calls: list[tuple[str, str, dict[str, object] | None, str | None]] = []
+    approval_url = "https://www.sandbox.paypal.com/approve/I-CREATED-B13"
 
-    async def mock_stripe_post(
-        _service: StripeBillingService,
+    async def mock_paypal_request(
+        _service: PayPalBillingService,
+        method: str,
         path: str,
-        form_data: dict[str, str],
+        payload: dict[str, object] | None = None,
+        *,
+        request_id: str | None = None,
     ) -> dict[str, str]:
-        calls.append((path, form_data))
-        if path == "/v1/checkout/sessions":
-            return {"id": "cs_b13", "url": "https://checkout.stripe.com/cs_b13"}
-        return {"url": "https://billing.stripe.com/session_b13"}
+        calls.append((method, path, payload, request_id))
+        if path == "/v1/billing/subscriptions":
+            return {
+                "id": "I-CREATED-B13",
+                "links": [{"rel": "approve", "href": approval_url}],
+            }
+        return {}
 
-    monkeypatch.setattr(StripeBillingService, "_stripe_post", mock_stripe_post)
-    monkeypatch.setattr(settings, "stripe_secret_key", SecretStr("sk_test_b13"))
-    async with session_factory() as session:
-        session.add(
-            Subscription(
-                id="sub_b13_existing",
-                organization_id=_ORG_ID,
-                stripe_customer_id="cus_b13",
-                status="active",
-                plan_id="pro",
-            )
-        )
-        await session.commit()
-
-    configured_checkout = await client.post("/api/v1/billing/checkout", json={"plan_id": "pro"})
-    configured_portal = await client.post("/api/v1/billing/portal")
-
-    assert configured_checkout.status_code == 200, configured_checkout.text
-    assert configured_checkout.json()["data"]["session_id"] == "cs_b13"
-    assert configured_checkout.json()["data"]["url"] == "https://checkout.stripe.com/cs_b13"
-    assert configured_portal.status_code == 200, configured_portal.text
-    assert configured_portal.json()["data"]["url"] == "https://billing.stripe.com/session_b13"
-    assert calls[0][0] == "/v1/checkout/sessions"
-    assert calls[0][1]["line_items[0][price]"] == "price_b13"
-    assert calls[0][1]["metadata[organization_id]"] == _ORG_ID
-    assert calls[1] == (
-        "/v1/billing_portal/sessions",
-        {"customer": "cus_b13", "return_url": settings.stripe_portal_return_url},
+    monkeypatch.setattr(PayPalBillingService, "_paypal_request", mock_paypal_request)
+    created = await client.post(
+        "/api/v1/billing/checkout",
+        json={"plan_id": "pro"},
+        headers=checkout_headers,
     )
+    resumed = await client.post(
+        "/api/v1/billing/checkout",
+        json={"plan_id": "pro"},
+        headers=checkout_headers,
+    )
+    canceled = await client.post(
+        "/api/v1/billing/cancel",
+        headers={"Idempotency-Key": "cancel-b13-1"},
+    )
+
+    assert created.status_code == 200, created.text
+    assert created.json()["data"] == {
+        "subscription_id": "I-CREATED-B13",
+        "url": approval_url,
+    }
+    assert resumed.status_code == 200
+    assert resumed.json()["data"] == created.json()["data"]
+    assert canceled.status_code == 200
+    assert canceled.json()["data"]["status"] == "canceled"
+    assert calls[0][0:2] == ("POST", "/v1/billing/subscriptions")
+    assert calls[0][2]["plan_id"] == "P-PRO-B13"
+    assert calls[0][2]["custom_id"] == _ORG_ID
+    assert calls[0][3] is not None and len(calls[0][3]) == 36
+    assert calls[1][0:2] == (
+        "POST",
+        "/v1/billing/subscriptions/I-CREATED-B13/cancel",
+    )
+    assert calls[1][3] is not None and len(calls[1][3]) == 36
+
+    async with session_factory() as session:
+        subscription = (
+            await session.scalars(
+                select(Subscription).where(Subscription.organization_id == _ORG_ID)
+            )
+        ).one()
+        assert subscription.status == "canceled"
 
 
 async def test_b13_platform_admin_routes_audit_and_queue_operations(

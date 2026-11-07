@@ -7,10 +7,13 @@ from apps.api.identity.api.auth import (
     AuthenticatedUser,
     Permission,
     get_authenticated_user,
+    issue_dev_token,
     require_permissions,
 )
 from apps.api.identity.api.schemas import (
     CurrentUserResponse,
+    DevelopmentTokenRequest,
+    DevelopmentTokenResponse,
     MembershipResponse,
     OrganizationCreateRequest,
     OrganizationMemberResponse,
@@ -24,12 +27,64 @@ from apps.api.identity.application.service import (
     OrganizationNotFoundError,
     OrganizationSlugConflictError,
 )
+from apps.api.identity.infrastructure.models import Membership, Organization, User
 from apps.api.infrastructure.api_response import SuccessEnvelope, success_response
 from apps.api.infrastructure.database import get_db
+from apps.api.settings import settings
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/identity", tags=["identity"])
+
+
+@router.post(
+    "/dev-token",
+    response_model=SuccessEnvelope[DevelopmentTokenResponse],
+    include_in_schema=False,
+)
+async def create_development_token(
+    payload: DevelopmentTokenRequest,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, object]:
+    if settings.environment not in {"local", "test"} or settings.auth_mode != "dev":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    normalized_email = payload.email.strip().casefold()
+    result = await session.execute(
+        select(User, Membership, Organization)
+        .join(Membership, Membership.user_id == User.id)
+        .join(Organization, Organization.id == Membership.organization_id)
+        .where(func.lower(User.email) == normalized_email)
+        .order_by(Organization.slug)
+        .limit(1)
+    )
+    row = result.first()
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No local demo account matches that email",
+        )
+    user, membership, organization = row
+    try:
+        access_token = issue_dev_token(user.cognito_sub)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Development authentication is not configured",
+        ) from error
+
+    body = DevelopmentTokenResponse(
+        access_token=access_token,
+        user_id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        organization_id=organization.id,
+        organization_name=organization.name,
+        role=membership.role,
+    )
+    return success_response(request, body)
 
 
 @router.get(

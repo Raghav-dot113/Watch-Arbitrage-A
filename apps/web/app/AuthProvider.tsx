@@ -1,7 +1,15 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { fetchSession, fetchLogin, fetchLogout } from "../lib/auth-client";
+import { setAuthToken } from "../lib/api/client";
 import type { Session } from "../lib/session";
 
 interface AuthContextType {
@@ -18,29 +26,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refresh = async () => {
+  const applySession = useCallback((session: Session | null) => {
+    setAuthToken(session?.apiToken ?? null);
+    setUser(session);
+  }, []);
+
+  const refresh = useCallback(async () => {
     setIsLoading(true);
     try {
-      setUser(await fetchSession());
+      applySession(await fetchSession());
     } catch {
-      setUser(null);
+      applySession(null);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [applySession]);
 
   useEffect(() => {
-    void refresh();
-  }, []);
+    let active = true;
+    void fetchSession()
+      .then((session) => {
+        if (active) applySession(session);
+      })
+      .catch(() => {
+        if (active) applySession(null);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [applySession]);
 
   const login = async (email: string) => {
     const session = await fetchLogin(email);
+    setAuthToken(session.apiToken ?? null);
     setUser(session);
   };
 
   const logout = async () => {
-    await fetchLogout();
-    setUser(null);
+    try {
+      await fetchLogout();
+    } finally {
+      setAuthToken(null);
+      setUser(null);
+    }
   };
 
   const value: AuthContextType = { user, isLoading, login, logout, refresh };

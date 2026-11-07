@@ -3,20 +3,21 @@ from __future__ import annotations
 from typing import Annotated
 
 from apps.api.billing.api.schemas import (
-    StripeCheckoutRequest,
-    StripePortalResponse,
-    StripeSessionResponse,
-    StripeWebhookResponse,
+    PayPalCheckoutRequest,
+    PayPalSubscriptionApprovalResponse,
+    PayPalWebhookResponse,
     SubscriptionResponse,
 )
 from apps.api.billing.application.service import (
-    MAX_STRIPE_WEBHOOK_BODY_BYTES,
-    StripeBillingService,
-    StripeCustomerNotFoundError,
-    StripePlanNotConfiguredError,
-    StripeSignatureError,
-    StripeUnavailableError,
-    StripeWebhookPayloadError,
+    MAX_PAYPAL_WEBHOOK_BODY_BYTES,
+    PayPalBillingService,
+    PayPalOrganizationNotFoundError,
+    PayPalPlanNotConfiguredError,
+    PayPalSignatureError,
+    PayPalSubscriptionConflictError,
+    PayPalSubscriptionNotFoundError,
+    PayPalUnavailableError,
+    PayPalWebhookPayloadError,
 )
 from apps.api.identity.api.auth import AuthContext, Permission, require_permissions
 from apps.api.infrastructure.api_response import SuccessEnvelope, success_response
@@ -36,7 +37,7 @@ async def get_subscription(
     actor: Annotated[AuthContext, Depends(require_permissions(Permission.OPPORTUNITIES_READ))],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, object]:
-    subscription = await StripeBillingService(session).get_subscription(_organization_id(actor))
+    subscription = await PayPalBillingService(session).get_subscription(_organization_id(actor))
     body = SubscriptionResponse(
         id=subscription.id if subscription is not None else None,
         status=subscription.status if subscription is not None else "unpaid",
@@ -50,110 +51,136 @@ async def get_subscription(
 
 @router.post(
     "/checkout",
-    response_model=SuccessEnvelope[StripeSessionResponse],
+    response_model=SuccessEnvelope[PayPalSubscriptionApprovalResponse],
 )
 async def create_checkout_session(
-    payload: StripeCheckoutRequest,
+    payload: PayPalCheckoutRequest,
     request: Request,
     actor: Annotated[AuthContext, Depends(require_permissions(Permission.BILLING_MANAGE))],
     session: Annotated[AsyncSession, Depends(get_db)],
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=255)],
 ) -> dict[str, object]:
     try:
-        body = await StripeBillingService(session).create_checkout_session(
+        body = await PayPalBillingService(session).create_checkout_session(
             _organization_id(actor),
             actor.email,
             payload.plan_id,
             user_id=actor.user_id,
+            idempotency_key=idempotency_key,
             trace_id=request.state.trace_id,
         )
-    except StripePlanNotConfiguredError as error:
+    except PayPalPlanNotConfiguredError as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Requested subscription plan is not configured",
         ) from error
-    except StripeUnavailableError as error:
+    except PayPalOrganizationNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+        ) from error
+    except PayPalSubscriptionConflictError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Organization already has a subscription requiring action",
+        ) from error
+    except PayPalUnavailableError as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Stripe billing is not available",
+            detail="PayPal billing is not available",
         ) from error
-    return success_response(request, StripeSessionResponse.model_validate(body))
+    return success_response(request, PayPalSubscriptionApprovalResponse.model_validate(body))
 
 
 @router.post(
-    "/portal",
-    response_model=SuccessEnvelope[StripePortalResponse],
+    "/cancel",
+    response_model=SuccessEnvelope[SubscriptionResponse],
 )
-async def create_portal_session(
+async def cancel_subscription(
     request: Request,
     actor: Annotated[AuthContext, Depends(require_permissions(Permission.BILLING_MANAGE))],
     session: Annotated[AsyncSession, Depends(get_db)],
+    idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=255)],
 ) -> dict[str, object]:
     try:
-        body = await StripeBillingService(session).create_portal_session(
+        subscription = await PayPalBillingService(session).cancel_subscription(
             _organization_id(actor),
             actor.user_id,
+            idempotency_key,
             trace_id=request.state.trace_id,
         )
-    except StripeCustomerNotFoundError as error:
+    except PayPalSubscriptionNotFoundError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Organization does not have a Stripe customer",
+            detail="Organization does not have a PayPal subscription",
         ) from error
-    except StripeUnavailableError as error:
+    except PayPalUnavailableError as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Stripe billing is not available",
+            detail="PayPal billing is not available",
         ) from error
-    return success_response(request, StripePortalResponse.model_validate(body))
+    body = SubscriptionResponse.model_validate(subscription)
+    return success_response(request, body)
 
 
 @router.post(
     "/webhook",
-    response_model=StripeWebhookResponse,
+    response_model=PayPalWebhookResponse,
 )
-async def stripe_webhook(
+async def paypal_webhook(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_db)],
-    stripe_signature: Annotated[
-        str | None, Header(alias="Stripe-Signature", max_length=1024)
+    paypal_auth_algo: Annotated[
+        str | None, Header(alias="PayPal-Auth-Algo", max_length=128)
     ] = None,
-) -> StripeWebhookResponse:
-    if stripe_signature is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Stripe-Signature header is required",
-        )
+    paypal_cert_url: Annotated[str | None, Header(alias="PayPal-Cert-Url", max_length=2048)] = None,
+    paypal_transmission_id: Annotated[
+        str | None, Header(alias="PayPal-Transmission-Id", max_length=256)
+    ] = None,
+    paypal_transmission_sig: Annotated[
+        str | None, Header(alias="PayPal-Transmission-Sig", max_length=2048)
+    ] = None,
+    paypal_transmission_time: Annotated[
+        str | None, Header(alias="PayPal-Transmission-Time", max_length=128)
+    ] = None,
+) -> PayPalWebhookResponse:
     content_length = request.headers.get("content-length")
     if (
         content_length is not None
         and content_length.isdigit()
-        and int(content_length) > MAX_STRIPE_WEBHOOK_BODY_BYTES
+        and int(content_length) > MAX_PAYPAL_WEBHOOK_BODY_BYTES
     ):
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-            detail="Stripe webhook payload is too large",
+            detail="PayPal webhook payload is too large",
         )
+    headers = {
+        "paypal-auth-algo": paypal_auth_algo or "",
+        "paypal-cert-url": paypal_cert_url or "",
+        "paypal-transmission-id": paypal_transmission_id or "",
+        "paypal-transmission-sig": paypal_transmission_sig or "",
+        "paypal-transmission-time": paypal_transmission_time or "",
+    }
     try:
-        created = await StripeBillingService(session).process_webhook(
+        created = await PayPalBillingService(session).process_webhook(
             await _read_webhook_body(request),
-            stripe_signature,
+            headers,
         )
-    except StripeSignatureError as error:
+    except PayPalSignatureError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Stripe webhook signature is invalid or expired",
+            detail="PayPal webhook signature is invalid",
         ) from error
-    except StripeWebhookPayloadError as error:
+    except PayPalWebhookPayloadError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Stripe webhook payload is invalid",
+            detail="PayPal webhook payload is invalid",
         ) from error
-    except StripeUnavailableError as error:
+    except PayPalUnavailableError as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Stripe webhook verification is not configured",
+            detail="PayPal webhook verification is not available",
         ) from error
-    return StripeWebhookResponse(duplicate=not created)
+    return PayPalWebhookResponse(duplicate=not created)
 
 
 async def _read_webhook_body(request: Request) -> bytes:
@@ -161,10 +188,10 @@ async def _read_webhook_body(request: Request) -> bytes:
     size = 0
     async for chunk in request.stream():
         size += len(chunk)
-        if size > MAX_STRIPE_WEBHOOK_BODY_BYTES:
+        if size > MAX_PAYPAL_WEBHOOK_BODY_BYTES:
             raise HTTPException(
                 status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-                detail="Stripe webhook payload is too large",
+                detail="PayPal webhook payload is too large",
             )
         chunks.append(chunk)
     return b"".join(chunks)

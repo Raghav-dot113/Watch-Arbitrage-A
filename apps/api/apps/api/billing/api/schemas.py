@@ -7,22 +7,18 @@ from apps.api.billing.domain import SubscriptionStatus
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class StripeCheckoutRequest(BaseModel):
+class PayPalCheckoutRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     plan_id: str = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
 
 
-class StripeSessionResponse(BaseModel):
-    session_id: str
+class PayPalSubscriptionApprovalResponse(BaseModel):
+    subscription_id: str
     url: str
 
 
-class StripePortalResponse(BaseModel):
-    url: str
-
-
-class StripeWebhookResponse(BaseModel):
+class PayPalWebhookResponse(BaseModel):
     received: Literal[True] = True
     duplicate: bool = False
 

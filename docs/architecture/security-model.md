@@ -117,9 +117,9 @@ Every API request:
 
 | Control | Implementation |
 |---------|---------------|
-| Signature verification | HMAC-SHA256 signature validated on every webhook (Stripe) |
-| Timestamp tolerance | Reject webhooks older than 5 minutes |
-| Replay protection | Idempotency keys or processed event IDs |
+| Signature verification | PayPal `verify-webhook-signature` API validates each webhook transmission |
+| Timestamp tolerance | Enforced by PayPal's verification service |
+| Replay protection | Transactionally stored PayPal event IDs |
 | Rate limiting | Per-webhook-endpoint rate limits |
 
 ---

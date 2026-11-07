@@ -76,7 +76,7 @@ Trade Outcomes (realized profit/loss, feeding model calibration)
 - Worker pipeline (discovery → fetch → parse → normalize → valuate → match → notify)
 - API routes for all modules
 - Web dashboard (Next.js) and mobile app (Flutter)
-- Stripe billing integration
+- PayPal subscription billing integration
 - The remaining 13 phases of the 16-week roadmap
 
 ---
@@ -520,6 +520,15 @@ Development tokens are disabled outside `local` and `test`. OIDC mode fails clos
 the production OIDC verifier is implemented; do not deploy protected routes with
 development authentication.
 
+### Local web/API preview login
+
+After the demo database is seeded and the API is running in `local`/`dev` mode, start
+the web app with `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`. Sign in with a
+seeded account such as `dealer@demo.example.com`. The web development login requests a
+short-lived API token for that database user and attaches it to API requests; arbitrary
+email addresses are not accepted. The token endpoint is hidden outside local/test
+environments and must never be enabled with OIDC or in production.
+
 ### Python 3.14 + asyncpg Workaround
 
 The local API uses SQLite (`aiosqlite`) as the database driver because `asyncpg 0.31.0` has unresolved SSL negotiation issues on Python 3.14.6. Production and CI use Python 3.13 + PostgreSQL. See ADR-0009 for full details. The SQLite default is configured in `apps/api/apps/api/settings.py`:
@@ -628,7 +637,7 @@ These rules are extracted from `AGENTS.md`. The complete AGENTS.md is the author
 | Membership.role `Text()` mapping | NOTE | PostgreSQL ENUM enforces valid values at DB layer. ORM uses `Text()` — valid values enforced at INSERT time. |
 | SQLite ≠ PostgreSQL | NOTE | Tests use SQLite. CI validates PostgreSQL. Never treat SQLite success as proof of PostgreSQL correctness. |
 | `server_default=sa.text("true")` | NOTE | PostgreSQL-specific syntax. Python `default=True` ensures correct SQLite behavior. |
-| Stripe IDs nullable | NOTE | `subscriptions.stripe_customer_id` and `stripe_subscription_id` are nullable — supports pre-Stripe-integration development. |
+| PayPal IDs nullable | NOTE | PayPal subscription fields remain nullable for legacy and pending records; `paypal_subscription_id` is uniquely indexed. Legacy Stripe IDs are inert. |
 | `updated_at` application-layer | NOTE | The `TimestampMixin.updated_at` uses Python `onupdate` lambda but no `server_default` with `ON UPDATE`. Application code must set `updated_at` explicitly on updates. |
 | `Alias` has no timestamps | NOTE | Migration 001 creates aliases without `created_at`. This is by design — aliases are catalog metadata. |
 
@@ -637,7 +646,7 @@ These rules are extracted from `AGENTS.md`. The complete AGENTS.md is the author
 | Item | When |
 |------|------|
 | `asyncpg` Python 3.14 compatibility | Track upstream releases; switch when resolved |
-| `subscriptions` indexes on Stripe IDs | Post-MVP when subscription count warrants |
+| Legacy Stripe columns and event table | Remove only through a later expand/contract migration |
 | Python-level ENUM guard for `role` | Phase 3 or later |
 | Makefile per-migration downgrade | Batch 8 (CI setup) |
 | `import-linter` TOML format conversion | Batch 8 (CI setup) |

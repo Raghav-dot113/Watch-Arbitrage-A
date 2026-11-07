@@ -204,7 +204,7 @@ Following the authority order defined in `AGENTS.md` §1 and the stop conditions
   - SRS §11.1, §15: App store submission review and legal sign-off.
   - Playbook §9.6, §17.4: Mobile store submission policy checks.
 - **Current State in Code and Plans:**
-  - Web application implements Stripe Billing (checkout session, portal, webhooks).
+  - Web billing uses PayPal Subscriptions and verified lifecycle webhooks; see ADR 0010.
   - Mobile application architecture (`docs/architecture/frontend-design.md`, `apps/mobile`) plans account settings and login, but the in-app monetization model is not formally defined.
 - **Exact Decision Needed:**
   - Legal & Product decision on mobile billing model:

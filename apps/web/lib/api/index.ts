@@ -16,8 +16,16 @@ export { listActivity, listTradeOutcomes } from "./activity";
 export type { ActivityItem, TradeOutcome } from "./types";
 export { getOrganizationSettings, patchOrganizationSettings } from "./settings";
 export type { OrganizationSettingsResponse, OrganizationSettingsPatchRequest, FeeDefaults } from "./types";
-export { getSubscription, createCheckoutSession, createPortalSession } from "./billing";
-export type { SubscriptionResponse, StripeSessionResponse, StripePortalResponse } from "./types";
+export {
+  getSubscription,
+  createPayPalSubscription,
+  cancelPayPalSubscription,
+} from "./billing";
+export type {
+  SubscriptionResponse,
+  PayPalSubscriptionApprovalResponse,
+  PayPalCheckoutRequest,
+} from "./types";
 export { getIntegrationStatus, linkTelegram, unlinkTelegram, registerPushDevice, unregisterPushDevice } from "./integrations";
 export type { IntegrationStatusResponse, TelegramLinkResponse, PushDeviceResponse } from "./types";
 export { listOpportunities, getOpportunity, recordOpportunityFeedback, recordTradeOutcome } from "./opportunities";

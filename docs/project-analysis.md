@@ -46,7 +46,7 @@ Dealer opens an opportunity alert → reviews cost breakdown and comps → recor
 | Alert engine | Rule matching by reference/price/condition with cooldowns |
 | Notification channels | Telegram bot, FCM push (mobile) |
 | Identity | OIDC (Cognito), organization membership, RBAC (Owner/Admin/Dealer/Viewer) |
-| Billing | Stripe Billing with trial/paid/cancel/past-due entitlement states |
+| Billing | PayPal Subscriptions with active/past-due/canceled/unpaid entitlement states (ADR 0010) |
 | Operations tools | Source health, job replay, DLQ management, admin queues |
 | Multi-tenancy | Organization-scoped data with strict tenant isolation |
 
@@ -57,7 +57,7 @@ These are recorded from the SRS and must not be built during MVP:
 - Marketplace or transaction platform (no custody, no escrow, no money movement between parties)
 - Automated purchasing system (no bot checkout, no balance-sheet inventory)
 - Authentication service for third parties (no watch authentication claims)
-- Stripe Connect or marketplace payment architecture
+- Marketplace payment architecture
 - Enterprise SSO / advanced team workflows
 - Portfolio or inventory tracking for dealers
 - Negotiation support or seller communication templates
@@ -93,7 +93,7 @@ Decisions below are **engineering recommendations** derived from the SRS and pla
 | Idempotent queue consumers, webhooks, feedback writes, notifications | SRS §2 |
 | Source-specific parsing logic never in core catalog/valuation/opportunity/alert/UI | SRS §2 |
 | No path claims guaranteed authenticity, availability, or profit | SRS §2 |
-| AWS infrastructure: ECS Fargate, RDS PostgreSQL 18, ElastiCache, S3, Cognito, SQS, FCM, Stripe | SRS §7.2 |
+| AWS infrastructure: ECS Fargate, RDS PostgreSQL 18, ElastiCache, S3, Cognito, SQS, FCM, PayPal | SRS §7.2; billing-provider change in ADR 0010 |
 | Monorepo: apps/web, apps/mobile, apps/api, apps/worker, packages/, infrastructure/ | SRS §7.3 |
 | OWASP ASVS 5.0 Level 2 security baseline | SRS §11.1 |
 | Immutable raw evidence before parsing where permitted | SRS §10 |
@@ -197,7 +197,7 @@ Defined by SRS §10.1. Each module follows the playbook structure: `domain/`, `a
 | opportunities | Scoring, lifecycle, material versions, explanations, user views |
 | alerts | Rule CRUD, matching engine, cooldowns, channel routing, delivery status |
 | feedback | Decisions (PURCHASED/CONTACTED/DISMISSED), trade outcomes, metrics |
-| billing | Stripe customer mapping, webhook state, entitlements |
+| billing | PayPal subscription mapping, verified webhook state, entitlements |
 | operations | Admin queues, feature flags, audits, support tools |
 
 ---
@@ -215,7 +215,7 @@ Defined by SRS §10.1. Each module follows the playbook structure: `domain/`, `a
 | Object storage | Amazon S3 | — |
 | Identity | Amazon Cognito (or approved OIDC) | — |
 | Push | Firebase Cloud Messaging | — |
-| Billing | Stripe Billing + Checkout + Customer Portal | — |
+| Billing | PayPal Subscriptions | ADR 0010 |
 | Compute | AWS ECS Fargate | — |
 | CDN/Edge | CloudFront, ALB, WAF | — |
 | IaC | Terraform | — |
@@ -248,7 +248,7 @@ Defined by SRS §10.1. Each module follows the playbook structure: `domain/`, `a
 |-------|-------|------|
 | Unit | Financial formulas, scoring, permissions, parsers, matching rules, state transitions | pytest, Vitest, flutter_test |
 | Property-based | Money invariants, normalization, idempotency, pagination | Hypothesis |
-| Contract | Source adapter fixtures, OpenAPI clients, Stripe/Telegram/FCM interfaces | pytest |
+| Contract | Source adapter fixtures, OpenAPI clients, PayPal/Telegram/FCM interfaces | pytest |
 | Integration | PostgreSQL, S3, SQS, Redis/Valkey, OIDC, webhooks | pytest |
 | End-to-end | Onboarding, alert creation, opportunity open, feedback, billing, admin | Playwright |
 | Mobile integration | Push deep links, offline queue, session restore | integration_test |

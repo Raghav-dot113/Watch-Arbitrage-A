@@ -62,9 +62,9 @@ class PushDevice(ULIDMixin, Base):
     )
 
 
-class StripeWebhookEvent(Base):
-    __tablename__ = "stripe_webhook_events"
-    __table_args__ = (PrimaryKeyConstraint("id", name="pk_stripe_webhook_events"),)
+class PayPalWebhookEvent(Base):
+    __tablename__ = "paypal_webhook_events"
+    __table_args__ = (PrimaryKeyConstraint("id", name="pk_paypal_webhook_events"),)
 
     id: Mapped[str] = mapped_column(Text(), nullable=False)
     event_type: Mapped[str] = mapped_column(Text(), nullable=False)

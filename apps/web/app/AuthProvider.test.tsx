@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act, fireEvent } from "@testing-library/react";
 import { AuthProvider, useAuth } from "./AuthProvider";
+import { getAuthHeaders, setAuthToken } from "../lib/api/client";
 
 const session = {
   userId: "dev|user@example.com",
@@ -9,6 +10,7 @@ const session = {
   orgId: "org_dev",
   orgName: "Dev Organization",
   role: "dealer",
+  apiToken: "dev-api-token",
 };
 
 type FetchArgs = [input: RequestInfo | URL, init?: RequestInit];
@@ -34,6 +36,7 @@ function Harness() {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  setAuthToken(null);
   (globalThis.fetch as unknown) = mockFetch((url) => {
     if (url.endsWith("/api/auth/session")) {
       return Response.json({ ok: true, user: session });
@@ -49,6 +52,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  setAuthToken(null);
   vi.restoreAllMocks();
 });
 
@@ -63,6 +67,9 @@ describe("AuthProvider", () => {
       await new Promise((r) => setTimeout(r, 0));
     });
     expect(screen.getByTestId("user").textContent).toBe("user@example.com");
+    expect(getAuthHeaders()).toEqual({
+      Authorization: "Bearer dev-api-token",
+    });
   });
 
   it("login sets the user", async () => {
@@ -75,6 +82,9 @@ describe("AuthProvider", () => {
       fireEvent.click(screen.getByTestId("login-btn"));
     });
     expect(screen.getByTestId("user").textContent).toBe("user@example.com");
+    expect(getAuthHeaders()).toEqual({
+      Authorization: "Bearer dev-api-token",
+    });
   });
 
   it("logout clears the user", async () => {
@@ -88,20 +98,15 @@ describe("AuthProvider", () => {
       fireEvent.click(screen.getByTestId("logout-btn"));
     });
     expect(screen.getByTestId("user").textContent).toBe("none");
+    expect(getAuthHeaders()).toEqual({});
   });
 
   it("throws when useAuth used outside provider", () => {
-    let error: Error | null = null;
     function Broken() {
-      try {
-        useAuth();
-      } catch (e) {
-        error = e as Error;
-      }
+      useAuth();
       return null;
     }
-    render(<Broken />);
-    expect(error).not.toBeNull();
-    expect(error!.message).toContain("AuthProvider");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(() => render(<Broken />)).toThrow("useAuth must be used within an AuthProvider");
   });
 });

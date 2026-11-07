@@ -5,8 +5,8 @@ import {
 } from "./settings";
 import {
   getSubscription,
-  createCheckoutSession,
-  createPortalSession,
+  createPayPalSubscription,
+  cancelPayPalSubscription,
 } from "./billing";
 import {
   getIntegrationStatus,
@@ -18,11 +18,13 @@ import {
 import { apiClient } from "./client";
 
 const mockGetEnvelope = vi.fn();
+const mockPost = vi.fn();
 const mockDelete = vi.fn();
 
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(apiClient, "getEnvelope").mockImplementation(mockGetEnvelope);
+  vi.spyOn(apiClient, "post").mockImplementation(mockPost);
   vi.spyOn(apiClient, "delete").mockImplementation(mockDelete);
 });
 
@@ -133,42 +135,52 @@ describe("settings api layer", () => {
     });
   });
 
-  describe("createCheckoutSession", () => {
-    it("calls apiClient.getEnvelope with checkout path", async () => {
+  describe("createPayPalSubscription", () => {
+    it("calls apiClient.post with checkout path and idempotency key", async () => {
       const expected = {
-        data: { session_id: "cs_1", url: "https://checkout.stripe.com/session" },
-        meta: null,
+        subscription_id: "I-1",
+        url: "https://www.sandbox.paypal.com/approve/I-1",
       };
-      mockGetEnvelope.mockResolvedValue(expected);
+      mockPost.mockResolvedValue(expected);
 
-      const result = await createCheckoutSession({ plan_id: "pro_monthly" });
+      const result = await createPayPalSubscription(
+        { plan_id: "pro_monthly" },
+        "request-key-1",
+      );
 
-      expect(mockGetEnvelope).toHaveBeenCalledWith(
+      expect(mockPost).toHaveBeenCalledWith(
         "/api/v1/billing/checkout",
         {
-          headers: {},
+          headers: { "Idempotency-Key": "request-key-1" },
           body: JSON.stringify({ plan_id: "pro_monthly" }),
         },
       );
-      expect(result).toEqual(expected.data);
+      expect(result).toEqual(expected);
     });
   });
 
-  describe("createPortalSession", () => {
-    it("calls apiClient.getEnvelope with portal path", async () => {
+  describe("cancelPayPalSubscription", () => {
+    it("calls apiClient.post with cancellation path", async () => {
       const expected = {
-        data: { url: "https://billing.stripe.com/portal" },
-        meta: null,
+        id: "sub_1",
+        status: "canceled",
+        plan_id: "pro_monthly",
+        current_period_start: null,
+        current_period_end: null,
+        trial_end: null,
       };
-      mockGetEnvelope.mockResolvedValue(expected);
+      mockPost.mockResolvedValue(expected);
 
-      const result = await createPortalSession();
+      const result = await cancelPayPalSubscription("cancel-key-1");
 
-      expect(mockGetEnvelope).toHaveBeenCalledWith(
-        "/api/v1/billing/portal",
-        { headers: {} },
+      expect(mockPost).toHaveBeenCalledWith(
+        "/api/v1/billing/cancel",
+        {
+          headers: { "Idempotency-Key": "cancel-key-1" },
+          body: JSON.stringify({}),
+        },
       );
-      expect(result).toEqual(expected.data);
+      expect(result).toEqual(expected);
     });
   });
 

@@ -289,16 +289,12 @@ export interface SubscriptionResponse {
   trial_end: string | null;
 }
 
-export interface StripeSessionResponse {
-  session_id: string;
+export interface PayPalSubscriptionApprovalResponse {
+  subscription_id: string;
   url: string;
 }
 
-export interface StripePortalResponse {
-  url: string;
-}
-
-export interface StripeCheckoutRequest {
+export interface PayPalCheckoutRequest {
   plan_id: string;
 }
 

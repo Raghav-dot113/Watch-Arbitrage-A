@@ -705,7 +705,7 @@ async def _seed_subscriptions(
             continue
         existing = await session.execute(
             select(Subscription).where(
-                Subscription.stripe_subscription_id == seed.stripe_subscription_id
+                Subscription.paypal_subscription_id == seed.paypal_subscription_id
             )
         )
         if existing.scalar_one_or_none() is not None:
@@ -714,8 +714,8 @@ async def _seed_subscriptions(
             Subscription(
                 id=generate_ulid("sub"),
                 organization_id=org.id,
-                stripe_customer_id=seed.stripe_customer_id,
-                stripe_subscription_id=seed.stripe_subscription_id,
+                paypal_payer_id=seed.paypal_payer_id,
+                paypal_subscription_id=seed.paypal_subscription_id,
                 status=seed.status,
                 plan_id=seed.plan_id,
                 current_period_start=seed.current_period_start,

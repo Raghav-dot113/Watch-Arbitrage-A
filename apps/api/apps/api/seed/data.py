@@ -459,13 +459,13 @@ class SeedTradeOutcome:
 @dataclass(frozen=True)
 class SeedSubscription:
     organization_slug: str
-    stripe_customer_id: str
-    stripe_subscription_id: str
+    paypal_subscription_id: str
     status: Literal["trialing", "active", "past_due", "canceled", "unpaid"]
     plan_id: str
     current_period_start: datetime
     current_period_end: datetime
     trial_end: datetime | None = None
+    paypal_payer_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -927,8 +927,7 @@ SEED_TRADE_OUTCOMES: list[SeedTradeOutcome] = [
 SEED_SUBSCRIPTIONS: list[SeedSubscription] = [
     SeedSubscription(
         organization_slug="demo",
-        stripe_customer_id="cus_seed_demo",
-        stripe_subscription_id="sub_seed_demo",
+        paypal_subscription_id="I-SEED-DEMO",
         status="active",
         plan_id="dealer-pro",
         current_period_start=datetime(2026, 11, 1, tzinfo=UTC),
@@ -936,8 +935,7 @@ SEED_SUBSCRIPTIONS: list[SeedSubscription] = [
     ),
     SeedSubscription(
         organization_slug="acme-watch",
-        stripe_customer_id="cus_seed_acme",
-        stripe_subscription_id="sub_seed_acme",
+        paypal_subscription_id="I-SEED-ACME",
         status="trialing",
         plan_id="dealer-starter",
         current_period_start=datetime(2026, 11, 1, tzinfo=UTC),

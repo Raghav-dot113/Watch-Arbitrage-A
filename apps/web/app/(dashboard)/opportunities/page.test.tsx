@@ -1,9 +1,57 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import type { ReactNode } from "react";
 import OpportunitiesPage from "./page";
 
 const mockPush = vi.fn();
 const mockUseOpportunities = vi.fn();
+
+type GridRow = Record<string, unknown> & { id: string };
+type GridColumn = {
+  field?: string;
+  headerName?: string;
+  cellRenderer?: (params: { value: unknown; data: GridRow }) => ReactNode;
+  valueFormatter?: (params: { value: unknown; data: GridRow }) => ReactNode;
+};
+
+vi.mock("ag-grid-react", () => ({
+  AgGridReact: ({
+    rowData = [],
+    columnDefs = [],
+    onRowClicked,
+  }: {
+    rowData?: GridRow[];
+    columnDefs?: GridColumn[];
+    onRowClicked?: (event: { data: GridRow }) => void;
+  }) => (
+    <div role="grid" aria-label="Opportunity feed">
+      {rowData.map((row, index) => (
+        <div
+          key={row.id}
+          role="row"
+          data-testid={`opportunity-row-${index}`}
+          onClick={() => onRowClicked?.({ data: row })}
+        >
+          {columnDefs.map((column) => {
+            const value = column.field ? row[column.field] : null;
+            const params = { value, data: row };
+            let output: ReactNode = value == null ? "—" : String(value);
+            if (column.cellRenderer) {
+              output = column.cellRenderer(params);
+            } else if (column.valueFormatter) {
+              output = column.valueFormatter(params);
+            }
+            return (
+              <div role="gridcell" key={column.field ?? column.headerName}>
+                {output}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  ),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
@@ -92,6 +140,7 @@ describe("OpportunitiesPage", () => {
     });
 
     render(<OpportunitiesPage />);
+    expect(screen.getByRole("grid", { name: "Opportunity feed" })).toBeInTheDocument();
     const row = screen.getByTestId("opportunity-row-0");
     expect(row).toBeInTheDocument();
     expect(row).toHaveTextContent("opp_1");

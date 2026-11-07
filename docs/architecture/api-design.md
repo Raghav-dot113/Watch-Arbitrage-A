@@ -276,22 +276,27 @@ This is intentional: operational endpoints are consumed by machines (ALB target 
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/billing/subscription` | Current subscription status |
-| POST | `/billing/checkout` | Create Stripe Checkout session |
-| POST | `/billing/portal` | Create Stripe Customer Portal session |
-| POST | `/billing/webhook` | Stripe webhook (unauthenticated, signature-verified) |
+| POST | `/billing/checkout` | Create or resume PayPal subscription approval |
+| POST | `/billing/cancel` | Cancel the organization's PayPal subscription |
+| POST | `/billing/webhook` | PayPal webhook (unauthenticated, provider-verified) |
 
 #### B13 billing behavior
 
-- Subscription reads require `opportunities:read`; checkout and portal creation
-  require `billing:manage`. Checkout accepts a configured `plan_id`; provider price
-  IDs, API credentials, and browser return URLs come from server configuration.
-- Stripe requests use a bounded timeout. Provider errors are logged without secrets
-  and surfaced as 503. Returned redirect URLs are restricted to HTTPS Stripe hosts.
-- Webhooks verify the Stripe timestamped HMAC signature with a five-minute replay
-  window, cap payloads at 1 MB, and record event IDs transactionally with
-  subscription updates, making retries idempotent. Unknown event types are
-  acknowledged and recorded without changing entitlements. Supported subscription
-  statuses are conservatively mapped to the persisted status enum.
+- Subscription reads require `opportunities:read`; checkout and cancellation
+  require `billing:manage`. Checkout accepts a logical `plan_id` mapped to a
+  server-configured PayPal plan. PayPal credentials, webhook ID, and browser
+  return URLs remain server-side.
+- PayPal requests use a bounded timeout and `PayPal-Request-Id` derived from the
+  caller's `Idempotency-Key` for checkout and cancellation. Provider errors are
+  logged without credentials and surfaced as 503. Approval links are restricted
+  to HTTPS PayPal hosts.
+- Webhooks are limited to 1 MB and verified through PayPal's
+  `verify-webhook-signature` endpoint using the transmission headers, configured
+  webhook ID, and original event. Event IDs are committed transactionally with
+  tenant-scoped subscription updates, making retries idempotent. Unknown event
+  types are acknowledged and recorded without changing entitlements.
+- Stripe data remains inert legacy data after ADR 0010; it is not considered by
+  subscription reads or entitlement updates.
 
 ### 4.9 Operations (`/api/v1/admin`)
 

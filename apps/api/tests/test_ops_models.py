@@ -187,8 +187,10 @@ class TestOperationsOrmParity:
                 {
                     "id": False,
                     "organization_id": False,
-                    "stripe_customer_id": True,
-                    "stripe_subscription_id": True,
+                    "paypal_payer_id": True,
+                    "paypal_subscription_id": True,
+                    "paypal_approval_url": True,
+                    "paypal_updated_at": True,
                     "status": False,
                     "plan_id": True,
                     "current_period_start": True,

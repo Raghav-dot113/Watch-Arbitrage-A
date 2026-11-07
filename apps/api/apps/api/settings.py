@@ -30,13 +30,13 @@ class Settings(BaseSettings):
     integration_encryption_key: SecretStr = SecretStr("")
     telegram_bot_token: SecretStr = SecretStr("")
     telegram_bot_username: str = ""
-    stripe_secret_key: SecretStr = SecretStr("")
-    stripe_webhook_secret: SecretStr = SecretStr("")
-    stripe_price_ids: dict[str, str] = Field(default_factory=dict)
-    stripe_success_url: str = "http://localhost:3000/settings/billing?checkout=success"
-    stripe_cancel_url: str = "http://localhost:3000/settings/billing?checkout=cancel"
-    stripe_portal_return_url: str = "http://localhost:3000/settings/billing"
-    stripe_api_base_url: str = "https://api.stripe.com"
+    paypal_client_id: str = ""
+    paypal_client_secret: SecretStr = SecretStr("")
+    paypal_webhook_id: str = ""
+    paypal_plan_ids: dict[str, str] = Field(default_factory=dict)
+    paypal_return_url: str = "http://localhost:3000/settings/organization?checkout=success"
+    paypal_cancel_url: str = "http://localhost:3000/settings/organization?checkout=cancel"
+    paypal_api_base_url: str = "https://api-m.sandbox.paypal.com"
     provider_request_timeout_seconds: float = 10
 
     # Default is SQLite (aiosqlite) for local development.
@@ -88,10 +88,9 @@ class Settings(BaseSettings):
         return ",".join(normalized_origins)
 
     @field_validator(
-        "stripe_success_url",
-        "stripe_cancel_url",
-        "stripe_portal_return_url",
-        "stripe_api_base_url",
+        "paypal_return_url",
+        "paypal_cancel_url",
+        "paypal_api_base_url",
     )
     @classmethod
     def validate_provider_urls(cls, value: str) -> str:
@@ -107,6 +106,23 @@ class Settings(BaseSettings):
             raise ValueError("Provider URLs must be absolute HTTP(S) URLs without fragments")
         return value
 
+    @field_validator("paypal_api_base_url")
+    @classmethod
+    def validate_paypal_api_host(cls, value: str) -> str:
+        parsed = urlsplit(value)
+        try:
+            port = parsed.port
+        except ValueError as exc:
+            raise ValueError("PayPal API URL must use an official PayPal API host") from exc
+        if (
+            parsed.hostname not in {"api-m.sandbox.paypal.com", "api-m.paypal.com"}
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or port not in {None, 443}
+        ):
+            raise ValueError("PayPal API URL must use an official PayPal API host")
+        return value
+
     @field_validator("provider_request_timeout_seconds")
     @classmethod
     def validate_provider_timeout(cls, value: float) -> float:
@@ -120,17 +136,18 @@ class Settings(BaseSettings):
             raise ValueError("Development authentication is only allowed in local or test")
         if self.environment in {"staging", "production"}:
             provider_urls = (
-                self.stripe_success_url,
-                self.stripe_cancel_url,
-                self.stripe_portal_return_url,
-                self.stripe_api_base_url,
+                self.paypal_return_url,
+                self.paypal_cancel_url,
+                self.paypal_api_base_url,
             )
             if any(urlsplit(url).scheme != "https" for url in provider_urls):
                 raise ValueError("Provider URLs must use HTTPS outside local and test")
-            if urlsplit(self.stripe_api_base_url).hostname != "api.stripe.com":
-                raise ValueError(
-                    "Stripe API base URL must be api.stripe.com outside local and test"
-                )
+            paypal_host = urlsplit(self.paypal_api_base_url).hostname
+            allowed_hosts = {"api-m.sandbox.paypal.com", "api-m.paypal.com"}
+            if paypal_host not in allowed_hosts:
+                raise ValueError("PayPal API base URL must use an official PayPal API host")
+            if self.environment == "production" and paypal_host != "api-m.paypal.com":
+                raise ValueError("Production must use the live PayPal API host")
         return self
 
     @property
