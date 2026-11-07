@@ -47,6 +47,7 @@ async def session():
 class TestBaseRepository:
     async def test_save_and_get_by_id(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         repo = BaseRepository[TestModel](session)
         model = TestModel(id=generate_ulid("tst"), name="test-item")
         saved = await repo.save(model)
@@ -58,6 +59,7 @@ class TestBaseRepository:
 
     async def test_list_all(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         repo = BaseRepository[TestModel](session)
         for i in range(5):
             model = TestModel(id=generate_ulid("tst"), name=f"item-{i}")
@@ -69,6 +71,7 @@ class TestBaseRepository:
 
     async def test_count(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         repo = BaseRepository[TestModel](session)
         for i in range(3):
             model = TestModel(id=generate_ulid("tst"), name=f"count-{i}")
@@ -80,6 +83,7 @@ class TestBaseRepository:
 
     async def test_delete(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         repo = BaseRepository[TestModel](session)
         model = TestModel(id=generate_ulid("tst"), name="to-delete")
         await repo.save(model)
@@ -95,6 +99,7 @@ class TestBaseRepository:
 class TestTenantRepository:
     async def test_get_by_id_with_matching_org(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         repo = TenantRepository[TenantModel](session)
         model = TenantModel(id=generate_ulid("tnt"), organization_id="org_a", data="secret")
         await repo.save(model)
@@ -106,6 +111,7 @@ class TestTenantRepository:
 
     async def test_cross_tenant_returns_none(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         repo = TenantRepository[TenantModel](session)
         model = TenantModel(id=generate_ulid("tnt"), organization_id="org_a", data="secret")
         await repo.save(model)
@@ -116,6 +122,7 @@ class TestTenantRepository:
 
     async def test_list_by_org_only_returns_own(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         repo = TenantRepository[TenantModel](session)
         for i in range(3):
             model = TenantModel(id=generate_ulid("tnt"), organization_id="org_a", data=f"a-{i}")
@@ -170,6 +177,7 @@ class TestUnitOfWorkGuards:
 
     async def test_exception_triggers_rollback(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         uow = UnitOfWork(session=session)
         repo = BaseRepository[TestModel](session)
         model = TestModel(id=generate_ulid("tst"), name="rollback-test")
@@ -179,10 +187,10 @@ class TestUnitOfWorkGuards:
         await session.rollback()
 
 
-
 class TestOrganizationSettings:
     async def test_persist_and_reload_settings(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         org = Organization(
             id=generate_ulid("org"),
             name="Settings Org",
@@ -198,6 +206,7 @@ class TestOrganizationSettings:
 
     async def test_settings_nullable(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         org = Organization(
             id=generate_ulid("org"),
             name="No Settings",
@@ -214,6 +223,7 @@ class TestOrganizationSettings:
 class TestForeignKeyEnforcement:
     async def test_invalid_membership_fk_rejected(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         membership = Membership(
             id=generate_ulid("mem"),
             organization_id="nonexistent_org",
@@ -221,6 +231,6 @@ class TestForeignKeyEnforcement:
             role="dealer",
         )
         session.add(membership)
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             await session.commit()
         await session.rollback()

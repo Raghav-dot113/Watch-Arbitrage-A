@@ -14,6 +14,7 @@ from apps.api.catalog.infrastructure.models import (
 from apps.api.identity.infrastructure.models import Membership, Organization, User
 from apps.api.infrastructure.models import Base
 from sqlalchemy import event
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 
@@ -79,7 +80,9 @@ class TestCatalogOrmParity:
         assert WatchListEntry.__tablename__ == "watch_list_entries"
 
     def test_watch_list_entry_unique_constraints(self):
-        assert "uq_watch_list_entries_list_ref" in [c.name for c in WatchListEntry.__table__.constraints]
+        assert "uq_watch_list_entries_list_ref" in [
+            c.name for c in WatchListEntry.__table__.constraints
+        ]
 
 
 class TestPostgresqlDialectCompilation:
@@ -147,7 +150,9 @@ class TestIdentityRepositories:
         session.add_all([org, user])
         await session.flush()
 
-        mem = Membership(id=generate_ulid("mem"), organization_id=org.id, user_id=user.id, role="dealer")
+        mem = Membership(
+            id=generate_ulid("mem"), organization_id=org.id, user_id=user.id, role="dealer"
+        )
         session.add(mem)
         await session.commit()
 
@@ -167,7 +172,9 @@ class TestIdentityRepositories:
         session.add_all([org1, org2, user])
         await session.flush()
 
-        mem = Membership(id=generate_ulid("mem"), organization_id=org1.id, user_id=user.id, role="dealer")
+        mem = Membership(
+            id=generate_ulid("mem"), organization_id=org1.id, user_id=user.id, role="dealer"
+        )
         session.add(mem)
         await session.commit()
 
@@ -229,25 +236,30 @@ class TestCatalogRepositories:
 class TestForeignKeyEnforcementCatalog:
     async def test_watchlist_orphan_org_rejected(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         wl = WatchList(id=generate_ulid("wl"), organization_id="nonexistent", name="Bad")
         session.add(wl)
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             await session.commit()
         await session.rollback()
 
     async def test_watchlist_entry_orphan_rejected(self, session):
         from chronoarb.domain.ulid import generate_ulid
+
         entry = WatchListEntry(id=generate_ulid("wle"), watch_list_id="fake", reference_id="fake")
         session.add(entry)
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             await session.commit()
         await session.rollback()
 
     async def test_alias_orphan_rejected(self, session):
         from chronoarb.domain.ulid import generate_ulid
-        alias = Alias(id=generate_ulid("als"), reference_id="fake", alias_text="test", source="manual")
+
+        alias = Alias(
+            id=generate_ulid("als"), reference_id="fake", alias_text="test", source="manual"
+        )
         session.add(alias)
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             await session.commit()
         await session.rollback()
 
@@ -269,6 +281,7 @@ class TestSchemas:
 
     def test_reference_no_internal_fields_exposed(self):
         from apps.api.catalog.api.schemas import ReferenceResponse
+
         fields = ReferenceResponse.model_fields.keys()
         assert "attributes" not in fields
         assert "__tablename__" not in fields

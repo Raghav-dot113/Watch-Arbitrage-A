@@ -30,6 +30,7 @@ from apps.api.opportunities.infrastructure import models as _opportunity_models 
 from apps.api.org_settings.api.routes import router as settings_router
 from apps.api.routes.health import health_handler
 from apps.api.routes.ready import ready_handler
+from apps.api.schemas import ApiError, HealthResponse, ReadyResponse
 from apps.api.settings import settings
 from apps.api.valuation.infrastructure import models as _valuation_models  # noqa: F401
 from fastapi import FastAPI
@@ -77,12 +78,36 @@ def create_app() -> FastAPI:
         "/health",
         health_handler,
         methods=["GET"],
+        name="health",
+        summary="Check API liveness",
+        description=(
+            "Returns whether the API process is running. "
+            "This endpoint does not require authentication."
+        ),
+        response_model=HealthResponse,
         include_in_schema=False,
     )
+    app.include_router(identity_router)
+    app.include_router(opportunities_router)
+    app.include_router(billing_router)
+    app.include_router(feedback_router)
+    app.include_router(alerts_router)
     app.add_api_route(
         "/ready",
         ready_handler,
         methods=["GET"],
+        name="ready",
+        summary="Check API readiness",
+        description=(
+            "Returns whether the API and its database dependency are ready to serve traffic."
+        ),
+        response_model=ReadyResponse,
+        responses={
+            503: {
+                "description": "A required dependency is unavailable.",
+                "model": ReadyResponse,
+            }
+        },
         include_in_schema=False,
     )
     app.include_router(identity_router)

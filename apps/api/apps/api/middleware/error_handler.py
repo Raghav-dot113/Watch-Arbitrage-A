@@ -51,8 +51,9 @@ async def pydantic_validation_handler(request: Request, exc: Exception) -> JSONR
         raise TypeError("Validation handler received an unsupported exception")
     trace_id = getattr(request.state, "trace_id", "unknown")
     field_errors: dict[str, list[str]] = {}
+
     for error in exc.errors():
-        loc = ".".join(str(p) for p in error["loc"])
+        loc = ".".join(str(part) for part in error["loc"])
         msg = error["msg"]
         field_errors.setdefault(loc, []).append(msg)
 
@@ -63,7 +64,12 @@ async def pydantic_validation_handler(request: Request, exc: Exception) -> JSONR
         trace_id=trace_id,
         retryable=False,
     )
-    logger.warning("validation_error", extra={"trace_id": trace_id, "errors": field_errors})
+
+    logger.warning(
+        "validation_error",
+        extra={"trace_id": trace_id, "errors": field_errors},
+    )
+
     return JSONResponse(
         status_code=_HTTP_422,
         content={"error": api_error.model_dump()},
@@ -104,6 +110,7 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
         trace_id=trace_id,
         retryable=True,
     )
+
     return JSONResponse(
         status_code=HTTP_500_INTERNAL_SERVER_ERROR,
         content={"error": api_error.model_dump()},

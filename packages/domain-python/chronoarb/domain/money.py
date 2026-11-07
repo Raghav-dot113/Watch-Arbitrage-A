@@ -26,9 +26,7 @@ class Money:
                 f"Currency must be a 3-character ISO 4217 code, got '{self.currency}'"
             )
         if not self.currency.isupper():
-            raise ValidationError(
-                f"Currency must be uppercase ISO 4217, got '{self.currency}'"
-            )
+            raise ValidationError(f"Currency must be uppercase ISO 4217, got '{self.currency}'")
         object.__setattr__(self, "amount", Decimal(str(self.amount)))
 
     def __add__(self, other: Money) -> Money:
@@ -79,6 +77,4 @@ class Money:
 
     def _check_currency_match(self, other: Money) -> None:
         if self.currency != other.currency:
-            raise CurrencyMismatchError(
-                f"Cannot operate on {self.currency} and {other.currency}"
-            )
+            raise CurrencyMismatchError(f"Cannot operate on {self.currency} and {other.currency}")

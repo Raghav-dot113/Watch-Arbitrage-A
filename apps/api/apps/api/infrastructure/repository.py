@@ -27,9 +27,7 @@ class BaseRepository[Model]:
         limit: int = 50,
         offset: int = 0,
     ) -> list[Model]:
-        result = await self.session.execute(
-            select(model_cls).offset(offset).limit(limit)
-        )
+        result = await self.session.execute(select(model_cls).offset(offset).limit(limit))
         return list(result.scalars().all())
 
     async def count(self, model_cls: type[Model]) -> int:
@@ -47,7 +45,11 @@ class BaseRepository[Model]:
 
 
 class TenantRepository[Model](BaseRepository[Model]):
-    def __init__(self, session: AsyncSession | None = None, model_cls: type[Model] | None = None) -> None:
+    def __init__(
+        self,
+        session: AsyncSession | None = None,
+        model_cls: type[Model] | None = None,
+    ) -> None:
         super().__init__(session)
         if model_cls is not None and "organization_id" not in model_cls.__table__.columns:
             raise TypeError(

@@ -64,7 +64,5 @@ class TestTraceIdPropagation:
 
     async def test_custom_trace_id_is_propagated(self, client):
         custom_id = "trc_custom-test-id-12345"
-        response = await client.get(
-            "/health", headers={"X-Trace-Id": custom_id}
-        )
+        response = await client.get("/health", headers={"X-Trace-Id": custom_id})
         assert response.headers["X-Trace-Id"] == custom_id

@@ -14,7 +14,7 @@ class Organization(ULIDMixin, TimestampMixin, Base):
 
     name: Mapped[str] = mapped_column(Text(), nullable=False)
     slug: Mapped[str] = mapped_column(Text(), unique=True, nullable=False)
-    settings: Mapped[dict | None] = mapped_column(
+    settings: Mapped[dict[str, Any] | None] = mapped_column(
         JSON().with_variant(JSONB(), "postgresql"), nullable=True
     )
 
@@ -41,18 +41,16 @@ class User(ULIDMixin, TimestampMixin, Base):
 
 class Membership(ULIDMixin, Base):
     __tablename__ = "memberships"
-    __table_args__ = (UniqueConstraint("user_id", "organization_id", name="uq_memberships_user_org"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "organization_id", name="uq_memberships_user_org"),
+    )
 
     organization_id: Mapped[str] = mapped_column(
         Text(), ForeignKey("organizations.id"), nullable=False
     )
-    user_id: Mapped[str] = mapped_column(
-        Text(), ForeignKey("users.id"), nullable=False
-    )
+    user_id: Mapped[str] = mapped_column(Text(), ForeignKey("users.id"), nullable=False)
     role: Mapped[str] = mapped_column(Text(), nullable=False)
-    invited_by: Mapped[str | None] = mapped_column(
-        Text(), ForeignKey("users.id"), nullable=True
-    )
+    invited_by: Mapped[str | None] = mapped_column(Text(), ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         default=lambda: datetime.now(UTC),
@@ -61,9 +59,7 @@ class Membership(ULIDMixin, Base):
     )
 
     organization: Mapped[Organization] = relationship(back_populates="memberships")
-    user: Mapped[User] = relationship(
-        back_populates="memberships", foreign_keys=[user_id]
-    )
+    user: Mapped[User] = relationship(back_populates="memberships", foreign_keys=[user_id])
 
     def __repr__(self) -> str:
         return f"<Membership {self.role}>"

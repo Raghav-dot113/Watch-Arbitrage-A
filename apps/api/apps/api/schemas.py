@@ -25,5 +25,5 @@ class ApiError(BaseModel):
 
 
 class ApiSuccessEnvelope(BaseModel):
-    data: dict[str, Any] | None = None
+    data: dict[str, Any] | list[dict[str, Any]] | None = None
     meta: dict[str, Any] | None = None

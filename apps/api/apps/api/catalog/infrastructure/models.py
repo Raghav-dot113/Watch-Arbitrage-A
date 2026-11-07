@@ -67,9 +67,7 @@ class WatchList(ULIDMixin, Base):
 class Reference(ULIDMixin, Base):
     __tablename__ = "references"
 
-    brand_id: Mapped[str] = mapped_column(
-        Text(), ForeignKey("brands.id"), nullable=False
-    )
+    brand_id: Mapped[str] = mapped_column(Text(), ForeignKey("brands.id"), nullable=False)
     ref_code: Mapped[str] = mapped_column(Text(), nullable=False)
     model_name: Mapped[str | None] = mapped_column(Text(), nullable=True)
     generation: Mapped[str | None] = mapped_column(Text(), nullable=True)
@@ -95,9 +93,7 @@ class Reference(ULIDMixin, Base):
 class Alias(ULIDMixin, Base):
     __tablename__ = "aliases"
 
-    reference_id: Mapped[str] = mapped_column(
-        Text(), ForeignKey("references.id"), nullable=False
-    )
+    reference_id: Mapped[str] = mapped_column(Text(), ForeignKey("references.id"), nullable=False)
     alias_text: Mapped[str] = mapped_column(Text(), nullable=False)
     source: Mapped[str | None] = mapped_column(Text(), nullable=True)
 
@@ -109,12 +105,8 @@ class Alias(ULIDMixin, Base):
 class WatchListEntry(ULIDMixin, Base):
     __tablename__ = "watch_list_entries"
 
-    watch_list_id: Mapped[str] = mapped_column(
-        Text(), ForeignKey("watch_lists.id"), nullable=False
-    )
-    reference_id: Mapped[str] = mapped_column(
-        Text(), ForeignKey("references.id"), nullable=False
-    )
+    watch_list_id: Mapped[str] = mapped_column(Text(), ForeignKey("watch_lists.id"), nullable=False)
+    reference_id: Mapped[str] = mapped_column(Text(), ForeignKey("references.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         default=lambda: datetime.now(UTC),
