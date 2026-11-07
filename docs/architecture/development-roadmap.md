@@ -57,7 +57,7 @@ Foundation ──► Domain/Data ──► Source Pipeline ──► Intelligenc
 | Notifications | Rule matching, Telegram, push, idempotency, delivery logs | Intelligence + Identity |
 | Web | Onboarding, opportunity feed/detail, settings, activity, admin | API contracts |
 | Mobile | Auth, feed/detail, push/deep links, offline feedback | API contracts + Notifications |
-| Commercial | Stripe billing, entitlements, portal, audit | Identity + Web |
+| Commercial | PayPal subscriptions, entitlements, cancellation, audit | Identity + Web |
 | Hardening | Second/third sources, model tuning, performance, security, accessibility, runbooks | All critical paths |
 
 ---
@@ -128,8 +128,8 @@ Foundation ──► Domain/Data ──► Source Pipeline ──► Intelligenc
 
 | Task | Outcome |
 |------|---------|
-| Stripe integration | Customer mapping, subscription lifecycle |
-| Checkout + Portal | Hosted Stripe UI for payment/cancel |
+| PayPal integration | Subscription mapping and lifecycle |
+| Checkout + cancellation | PayPal approval UI and API-backed cancellation |
 | Webhook handler | Signature verification, idempotent state updates |
 | Entitlement gates | Feature access based on subscription status |
 | Audit trail | Billing event logging |

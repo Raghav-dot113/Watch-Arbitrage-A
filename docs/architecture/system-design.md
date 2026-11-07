@@ -32,8 +32,8 @@ ChronoArb follows a **modular monolith with async workers** pattern. The custome
     ┌─────────────────────────────────┼──────────────────────────────────┐
     │                                 │                                  │
     │  ┌──────────┐   ┌───────────────▼──────────────┐   ┌───────────┐  │
-    │  │   SQS    │◄──┤       API / Workers          │──►│  Stripe   │  │
-    │  │  Queues  │   │  (ECS Fargate tasks)          │   │  Billing  │  │
+    │  │   SQS    │◄──┤       API / Workers          │──►│  PayPal   │  │
+    │  │  Queues  │   │  (ECS Fargate tasks)          │   │Subscriptions│ │
     │  └────┬─────┘   └───────────────┬──────────────┘   └───────────┘  │
     │       │                         │                                  │
     │       │    ┌────────────────────┼─────────────────────┐            │

@@ -8,9 +8,11 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@chronoarb/api-client": "workspace:*",
     "@chronoarb/design-tokens": "workspace:*",
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
@@ -19,6 +21,8 @@
     "@mui/material": "^9.3.1",
     "@mui/material-nextjs": "^9.3.0",
     "@tailwindcss/postcss": "^4.0.0",
+    "ag-grid-community": "36.2.0",
+    "ag-grid-react": "36.2.0",
     "next": "^16.0.0",
     "postcss": "^8.4.0",
     "react": "^19.0.0",
@@ -27,11 +31,18 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@tanstack/react-query": "^5.56.0",
+    "@testing-library/jest-dom": "^6.6.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.5.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.0.0",
-    "typescript": "^5.0.0"
+    "jsdom": "^25.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^2.1.0"
   }
 }

@@ -1,0 +1,13 @@
+{
+  "name": "@chronoarb/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed TypeScript fetch client for the ChronoArb FastAPI backend",
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

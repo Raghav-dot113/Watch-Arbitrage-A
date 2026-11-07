@@ -3,6 +3,7 @@ import WatchOutlinedIcon from '@mui/icons-material/WatchOutlined';
 import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 
 export interface NavigationItem {
   label: string;
@@ -46,6 +47,12 @@ export const navigationConfig: NavigationItem[] = [
     href: '/settings/organization',
     icon: SettingsOutlinedIcon,
     // We match /settings globally to cover /settings/organization, /settings/billing, etc.
+    matchRule: 'prefix',
+  },
+  {
+    label: 'Admin',
+    href: '/admin',
+    icon: ShieldOutlinedIcon,
     matchRule: 'prefix',
   },
 ];

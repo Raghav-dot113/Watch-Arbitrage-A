@@ -273,9 +273,8 @@ class TestSchemas:
         from chronoarb.domain.ulid import generate_ulid
 
         now = datetime.now(UTC)
-        org = Organization(
-            id=generate_ulid("org"), name="T", slug="t", created_at=now, updated_at=now
-        )
+        org = Organization(id=generate_ulid("org"), name="T", slug="t",
+                           created_at=now, updated_at=now)
         schema = OrganizationResponse.model_validate(org)
         assert schema.id == org.id
         assert schema.name == "T"

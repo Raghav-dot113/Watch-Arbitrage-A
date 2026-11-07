@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 
 from apps.api.infrastructure.models import Base, TimestampMixin, ULIDMixin
 from sqlalchemy import JSON, ForeignKey, Text, UniqueConstraint

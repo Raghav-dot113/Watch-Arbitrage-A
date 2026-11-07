@@ -3,25 +3,58 @@ from __future__ import annotations
 from datetime import datetime
 
 import sqlalchemy as sa
+from apps.api.billing.domain import SubscriptionStatus
 from apps.api.infrastructure.models import Base, ULIDMixin
-from sqlalchemy import ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import TIMESTAMP
+from sqlalchemy import ForeignKey, Index, PrimaryKeyConstraint, Text
+from sqlalchemy.dialects.postgresql import ENUM, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import func
+
+_subscription_status = sa.Enum(
+    "trialing",
+    "active",
+    "past_due",
+    "canceled",
+    "unpaid",
+    native_enum=False,
+).with_variant(
+    ENUM(
+        "trialing",
+        "active",
+        "past_due",
+        "canceled",
+        "unpaid",
+        name="subscription_status",
+        create_type=False,
+    ),
+    "postgresql",
+)
 
 
 class Subscription(ULIDMixin, Base):
     __tablename__ = "subscriptions"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name="pk_subscriptions"),
+        Index(
+            "uq_subscriptions_paypal_subscription_id",
+            "paypal_subscription_id",
+            unique=True,
+        ),
+    )
 
     organization_id: Mapped[str] = mapped_column(
-        Text(), ForeignKey("organizations.id"), nullable=False
-    )
-    stripe_customer_id: Mapped[str | None] = mapped_column(Text(), nullable=True)
-    stripe_subscription_id: Mapped[str | None] = mapped_column(Text(), nullable=True)
-    status: Mapped[str] = mapped_column(
-        sa.Enum("trialing", "active", "past_due", "canceled", "unpaid", name="subscription_status"),
+        Text(),
+        ForeignKey("organizations.id", name="fk_subscriptions_organization_id"),
         nullable=False,
     )
-    plan_id: Mapped[str | None] = mapped_column(String(), nullable=True)
+    paypal_payer_id: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    paypal_subscription_id: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    paypal_approval_url: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    paypal_updated_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+    status: Mapped[SubscriptionStatus] = mapped_column(_subscription_status, nullable=False)
+    plan_id: Mapped[str | None] = mapped_column(Text(), nullable=True)
     current_period_start: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True
     )
@@ -30,18 +63,8 @@ class Subscription(ULIDMixin, Base):
     )
     trial_end: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False
-    )
-
-
-class StripeWebhookEvent(ULIDMixin, Base):
-    __tablename__ = "stripe_webhook_events"
-
-    provider_event_id: Mapped[str] = mapped_column(Text(), unique=True, nullable=False)
-    event_type: Mapped[str] = mapped_column(Text(), nullable=False)
-    received_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )

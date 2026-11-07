@@ -2,20 +2,30 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
 
-import sqlalchemy as sa
 from apps.api.infrastructure.models import Base, ULIDMixin
-from sqlalchemy import JSON, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    ForeignKey,
+    Integer,
+    Numeric,
+    PrimaryKeyConstraint,
+    String,
+    Text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import func
 
 
 class Valuation(ULIDMixin, Base):
     __tablename__ = "valuations"
+    __table_args__ = (PrimaryKeyConstraint("id", name="pk_valuations"),)
 
     listing_id: Mapped[str] = mapped_column(
-        Text(), ForeignKey("normalized_listings.id"), nullable=False
+        Text(),
+        ForeignKey("normalized_listings.id", name="fk_valuations_listing_id"),
+        nullable=False,
     )
     model_version: Mapped[str] = mapped_column(Text(), nullable=False)
     config_version: Mapped[str] = mapped_column(Text(), nullable=False)
@@ -31,72 +41,15 @@ class Valuation(ULIDMixin, Base):
     confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
     comparable_count: Mapped[int | None] = mapped_column(Integer(), nullable=True)
     sample_dispersion: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
-    adjustment_details: Mapped[dict[str, Any] | None] = mapped_column(
+    adjustment_details: Mapped[dict | None] = mapped_column(
         JSON().with_variant(JSONB(), "postgresql"), nullable=True
     )
-    risk_reserve_details: Mapped[dict[str, Any] | None] = mapped_column(
+    risk_reserve_details: Mapped[dict | None] = mapped_column(
         JSON().with_variant(JSONB(), "postgresql"), nullable=True
     )
-    cost_breakdown: Mapped[dict[str, Any] | None] = mapped_column(
+    cost_breakdown: Mapped[dict | None] = mapped_column(
         JSON().with_variant(JSONB(), "postgresql"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
-
-
-class Opportunity(ULIDMixin, Base):
-    __tablename__ = "opportunities"
-    __table_args__ = (
-        UniqueConstraint(
-            "organization_id",
-            "listing_id",
-            "material_version",
-            name="uq_opportunities_org_listing_version",
-        ),
-    )
-
-    organization_id: Mapped[str] = mapped_column(
-        Text(), ForeignKey("organizations.id"), nullable=False
-    )
-    listing_id: Mapped[str] = mapped_column(
-        Text(), ForeignKey("normalized_listings.id"), nullable=False
-    )
-    valuation_id: Mapped[str] = mapped_column(Text(), ForeignKey("valuations.id"), nullable=False)
-    material_version: Mapped[int] = mapped_column(Integer(), nullable=False)
-    score: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
-    state: Mapped[str] = mapped_column(
-        sa.Enum(
-            "published",
-            "dismissed",
-            "contacted",
-            "purchased",
-            "expired",
-            name="opportunity_state",
-        ),
-        nullable=False,
-    )
-    positive_factors: Mapped[dict[str, Any] | None] = mapped_column(
-        JSON().with_variant(JSONB(), "postgresql"), nullable=True
-    )
-    negative_factors: Mapped[dict[str, Any] | None] = mapped_column(
-        JSON().with_variant(JSONB(), "postgresql"), nullable=True
-    )
-    published_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
-    state_changed_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=True
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False
-    )
-
-
-class OpportunityView(ULIDMixin, Base):
-    __tablename__ = "opportunity_views"
-    __table_args__ = (UniqueConstraint("opportunity_id", "user_id", name="uq_opportunity_views"),)
-
-    opportunity_id: Mapped[str] = mapped_column(
-        Text(), ForeignKey("opportunities.id"), nullable=False
-    )
-    user_id: Mapped[str] = mapped_column(Text(), ForeignKey("users.id"), nullable=False)
-    viewed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)

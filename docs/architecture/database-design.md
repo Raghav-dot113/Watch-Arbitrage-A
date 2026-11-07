@@ -280,8 +280,10 @@ trade_outcomes
 subscriptions
 ├── id (PK)            ULID
 ├── organization_id    FK → organizations.id
-├── stripe_customer_id TEXT
-├── stripe_subscription_id TEXT
+├── paypal_payer_id    TEXT
+├── paypal_subscription_id TEXT UNIQUE
+├── paypal_approval_url TEXT
+├── paypal_updated_at  TIMESTAMPTZ
 ├── status             ENUM(trialing, active, past_due, canceled, unpaid)
 ├── plan_id            TEXT
 ├── current_period_start TIMESTAMPTZ
@@ -290,6 +292,9 @@ subscriptions
 ├── created_at         TIMESTAMPTZ
 └── updated_at         TIMESTAMPTZ
 ```
+
+Legacy Stripe columns and webhook receipts remain inert after ADR 0010 and are
+retained until a later expand/contract cleanup migration.
 
 ### 2.11 Operations and Audit
 
