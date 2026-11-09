@@ -3,52 +3,54 @@ from __future__ import annotations
 import logging
 from http import HTTPStatus
 
+from apps.api.infrastructure.http_status import HTTP_422_UNPROCESSABLE_ENTITY
 from apps.api.schemas import ApiError
-from fastapi import FastAPI, Request
+from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError as PydanticValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.status import (
+    HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
+    HTTP_404_NOT_FOUND,
+    HTTP_409_CONFLICT,
+    HTTP_429_TOO_MANY_REQUESTS,
+    HTTP_500_INTERNAL_SERVER_ERROR,
+    HTTP_503_SERVICE_UNAVAILABLE,
+)
 
 logger = logging.getLogger("chronoarb.api")
-_OPERATIONAL_PATHS = frozenset({"/health", "/ready"})
-_ERROR_CODES = {
-    400: "VALIDATION_ERROR",
-    401: "UNAUTHORIZED",
-    403: "FORBIDDEN",
-    404: "NOT_FOUND",
-    405: "METHOD_NOT_ALLOWED",
-    409: "CONFLICT",
-    422: "VALIDATION_ERROR",
-    429: "RATE_LIMITED",
-    503: "SERVICE_UNAVAILABLE",
+_HTTP_422 = HTTP_422_UNPROCESSABLE_ENTITY
+
+_HTTP_ERROR_DETAILS: dict[int, tuple[str, str, bool]] = {
+    HTTP_401_UNAUTHORIZED: ("UNAUTHORIZED", "Authentication is required.", False),
+    HTTP_403_FORBIDDEN: ("FORBIDDEN", "You do not have permission to perform this action.", False),
+    HTTP_404_NOT_FOUND: ("NOT_FOUND", "The requested resource was not found.", False),
+    HTTP_409_CONFLICT: (
+        "CONFLICT",
+        "The request conflicts with the current resource state.",
+        False,
+    ),
+    _HTTP_422: ("VALIDATION_ERROR", "One or more fields are invalid.", False),
+    HTTP_429_TOO_MANY_REQUESTS: ("RATE_LIMITED", "Too many requests.", True),
+    HTTP_500_INTERNAL_SERVER_ERROR: (
+        "INTERNAL_ERROR",
+        "An internal error occurred.",
+        True,
+    ),
+    HTTP_503_SERVICE_UNAVAILABLE: (
+        "SERVICE_UNAVAILABLE",
+        "The service is temporarily unavailable.",
+        True,
+    ),
 }
-_RETRYABLE_CODES = frozenset({"RATE_LIMITED", "SERVICE_UNAVAILABLE", "INTERNAL_ERROR"})
 
 
-def error_response(
-    request: Request,
-    *,
-    status_code: int,
-    code: str,
-    message: str,
-    field_errors: dict[str, list[str]] | None = None,
-) -> JSONResponse:
+async def pydantic_validation_handler(request: Request, exc: Exception) -> JSONResponse:
+    if not isinstance(exc, (RequestValidationError, PydanticValidationError)):
+        raise TypeError("Validation handler received an unsupported exception")
     trace_id = getattr(request.state, "trace_id", "unknown")
-    error = ApiError(
-        code=code,
-        message=message,
-        field_errors=field_errors or {},
-        trace_id=trace_id,
-        retryable=code in _RETRYABLE_CODES,
-    )
-    return JSONResponse(
-        status_code=status_code,
-        content={"error": error.model_dump()},
-    )
-
-
-def _validation_field_errors(errors: list[dict[str, object]]) -> dict[str, list[str]]:
     field_errors: dict[str, list[str]] = {}
     for error in errors:
         location = error.get("loc", ())
@@ -139,21 +141,35 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
     return response
 
 
-async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+async def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    if not isinstance(exc, StarletteHTTPException):
+        raise TypeError("HTTP handler received an unsupported exception")
     trace_id = getattr(request.state, "trace_id", "unknown")
-
-    logger.exception(
-        "unhandled_error",
-        extra={"trace_id": trace_id},
-        exc_info=(type(exc), exc, exc.__traceback__),
+    code, message, retryable = _HTTP_ERROR_DETAILS.get(
+        exc.status_code,
+        ("REQUEST_ERROR", "The request could not be completed.", False),
+    )
+    field_errors = None
+    if exc.status_code == _HTTP_422 and isinstance(exc.detail, str):
+        field_errors = {"request": [exc.detail]}
+    api_error = ApiError(
+        code=code,
+        message=message,
+        field_errors=field_errors,
+        trace_id=trace_id,
+        retryable=retryable,
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": api_error.model_dump()},
+        headers=exc.headers,
     )
 
-    if request.url.path in _OPERATIONAL_PATHS:
-        return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
-    return error_response(
-        request,
-        status_code=500,
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    trace_id = getattr(request.state, "trace_id", "unknown")
+    logger.exception("unhandled_error", extra={"trace_id": trace_id})
+    api_error = ApiError(
         code="INTERNAL_ERROR",
         message="An internal error occurred.",
     )

@@ -6,7 +6,6 @@ from apps.api.infrastructure.models import Base, TimestampMixin, ULIDMixin
 from apps.api.infrastructure.repository import BaseRepository, TenantRepository
 from apps.api.infrastructure.uow import UnitOfWork
 from sqlalchemy import Text, event
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column
 

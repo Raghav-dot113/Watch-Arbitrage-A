@@ -23,15 +23,6 @@ class UserRepository(BaseRepository[User]):
 
 
 class MembershipRepository(TenantRepository[Membership]):
-    async def list_memberships_for_user(self, user_id: str) -> list[Membership]:
-        result = await self.session.execute(
-            select(Membership)
-            .where(Membership.user_id == user_id)
-            .options(joinedload(Membership.organization))
-            .order_by(Membership.created_at, Membership.id)
-        )
-        return list(result.scalars().unique().all())
-
     async def get_by_user_and_org(self, user_id: str, organization_id: str) -> Membership | None:
         result = await self.session.execute(
             select(Membership)
@@ -42,6 +33,18 @@ class MembershipRepository(TenantRepository[Membership]):
 
     async def list_members(self, organization_id: str) -> list[Membership]:
         result = await self.session.execute(
-            select(Membership).where(Membership.organization_id == organization_id)
+            select(Membership)
+            .options(joinedload(Membership.user))
+            .where(Membership.organization_id == organization_id)
+            .order_by(Membership.created_at, Membership.id)
+        )
+        return list(result.scalars().all())
+
+    async def list_for_user(self, user_id: str) -> list[Membership]:
+        result = await self.session.execute(
+            select(Membership)
+            .options(joinedload(Membership.organization))
+            .where(Membership.user_id == user_id)
+            .order_by(Membership.created_at, Membership.organization_id)
         )
         return list(result.scalars().all())

@@ -15,8 +15,9 @@
 | Timestamps | RFC 3339 UTC (`2026-08-02T16:42:19Z`) |
 | Money | String representation, e.g. `"11150.00"` with explicit `currency` field (ISO 4217) |
 | Pagination | Opaque cursor-based for mutable feeds; `next_cursor` in response |
-| Errors | Stable envelope: `{ error_code, message, field_errors, trace_id, retryable }` |
+| Errors | Stable envelope: `{ code, message, field_errors, trace_id, retryable }` |
 | Idempotency | `Idempotency-Key` header on retryable write endpoints |
+| CORS | Explicit comma-separated origins; wildcard origins are prohibited |
 | Content-Type | `application/json` |
 | Authorization | `Authorization: Bearer <JWT>` |
 
@@ -132,6 +133,25 @@ This is intentional: operational endpoints are consumed by machines (ALB target 
 | PUT | `/catalog/watch-lists/{id}` | Update watch list |
 | DELETE | `/catalog/watch-lists/{id}` | Delete watch list |
 
+#### B09 route behavior
+
+- Implemented identity routes are `GET /identity/me`, `POST /identity/organizations`,
+  `GET`/`PATCH /identity/organizations/{org_id}`, and
+  `GET /identity/organizations/{org_id}/members`. The profile endpoint returns the
+  authenticated user and all memberships, including organizations, without requiring
+  an organization selector. Organization creation atomically creates the caller's
+  owner membership. Organization reads and updates are limited to the selected
+  organization; updates require the `members:manage` permission.
+- Implemented catalog routes are `GET /catalog/brands`,
+  `GET /catalog/references` (active references only; optional `q`, `brand_id`,
+  `cursor`, and `limit` filters), `GET /catalog/references/{ref_id}`, and
+  watch-list list/create/replace/delete routes. Watch-list operations are scoped to
+  the authenticated organization; PUT replaces the name and complete reference set.
+- These routes use the standard `{ data, meta }` success envelope and emit typed
+  OpenAPI response schemas. Reference market statistics/price history and identity
+  invitations/member-role changes/removal remain deferred until their valuation and
+  invitation workflows are implemented.
+
 ### 4.3 Opportunities (`/api/v1/opportunities`)
 
 | Method | Path | Purpose |
@@ -141,6 +161,42 @@ This is intentional: operational endpoints are consumed by machines (ALB target 
 | POST | `/opportunities/{opp_id}/feedback` | Record decision (PURCHASED/CONTACTED/DISMISSED) |
 | GET | `/opportunities/{opp_id}/history` | Material version history |
 | POST | `/opportunities/{opp_id}/trade-outcome` | Record realized trade outcome |
+
+#### B10 feed and detail behavior
+
+- `GET /opportunities` is scoped to the authenticated organization and supports the
+  repository's cursor, sort, state, reference, brand, condition, ROI, profit,
+  confidence, text, and organization-owned watch-list filters. Each result includes
+  the listing summary, valuation and cost/risk breakdowns, the current user's
+  decision, and the ADR-0004 freshness fields.
+- `GET /opportunities/{opp_id}` returns the same valuation/listing detail plus
+  `observation_at`. Opportunities not belonging to the selected organization return
+  404. Both routes require `opportunities:read`.
+- Valuation records currently retain comparable count and dispersion, but the schema
+  has no individual comparable-record entity. The detail response therefore returns
+  stored comparable aggregates and adjustment/risk details rather than fabricated
+  comparable rows. Individual comparables remain deferred until their source model
+  is introduced.
+
+#### B11 feedback, history, and trade outcome behavior
+
+- `POST /opportunities/{opp_id}/feedback` requires `feedback:write` and an
+  `Idempotency-Key`. It records the dealer decision and moves the current material
+  version from `published` to `dismissed`, `contacted`, or `purchased` atomically.
+  Replaying the same key and payload returns the original feedback; reusing the key
+  with a different payload or deciding on a non-published opportunity returns 409.
+- `GET /opportunities/{opp_id}/history` requires `opportunities:read` and returns
+  the tenant-scoped material versions in descending order, with their state and
+  valuation summary. Any existing version in the selected organization can be used
+  as the history lookup anchor.
+- `POST /opportunities/{opp_id}/trade-outcome` requires `outcomes:write`, an
+  `Idempotency-Key`, and an opportunity already in `purchased` state. The request
+  records available acquisition/resale values, dealer-reported profit, and days to
+  sell; money values must be JSON decimal strings (not JSON numbers), and actual
+  profit is denominated in the acquisition currency. Feedback and outcome writes
+  are audited in the same transaction. The database permits
+  opportunity-independent outcomes, but this opportunity route always links the
+  outcome to its tenant-scoped opportunity.
 
 ### 4.4 Watches (`/api/v1/watches`)
 
@@ -160,6 +216,25 @@ This is intentional: operational endpoints are consumed by machines (ALB target 
 | POST | `/alerts/rules/{rule_id}/test` | Send test notification |
 | GET | `/alerts/deliveries` | Alert delivery history |
 
+#### B12 alert and activity behavior
+
+- Alert-rule reads require `opportunities:read`; create, replace, delete, and test
+  actions require `alerts:create`. Rules are organization-scoped. The DELETE route
+  disables a rule rather than removing it so existing delivery records retain their
+  rule reference.
+- Rule filters accept `reference_ids`, `conditions`, `min_profit`, and
+  `max_acquisition`; money filters are decimal strings. Channels are `in_app`,
+  `push`, or `telegram`. Delivery history is limited to the authenticated user's
+  deliveries in the selected organization.
+- The test route requires an `Idempotency-Key` and writes a pending
+  `notification.test_requested` outbox event. It returns 202 while queued (200 for
+  an identical replay); delivery is performed asynchronously and is not reported as
+  sent by the API.
+- Activity routes require `opportunities:read` and return organization-scoped
+  feedback and outcome records, newest first. Responses are bounded by a `limit`
+  from 1 to 100. Outcomes may have no opportunity link when created outside the
+  opportunity-specific workflow.
+
 ### 4.6 Activity (`/api/v1/activity`)
 
 | Method | Path | Purpose |
@@ -177,16 +252,51 @@ This is intentional: operational endpoints are consumed by machines (ALB target 
 | POST | `/settings/integrations/telegram` | Link Telegram |
 | DELETE | `/settings/integrations/telegram` | Unlink Telegram |
 | POST | `/settings/integrations/push` | Register device token |
-| DELETE | `/settings/integrations/push/{token}` | Unregister device |
+| DELETE | `/settings/integrations/push/{device_id}` | Unregister device |
+
+#### B13 settings and integration behavior
+
+- Organization settings reads require `opportunities:read`; patches require
+  `members:manage`. Settings are merged into the organization's JSON settings so
+  unrelated keys are preserved. Supported defaults are an ISO-style currency code,
+  IANA time zone, and Decimal-string fee amounts matching the valuation cost model.
+- Integration status and push registration are user-scoped within the selected
+  organization. Push tokens are encrypted at rest with AES-GCM and never returned;
+  the DELETE path uses an opaque device ID to avoid placing bearer-like tokens in
+  request logs. The encryption key must remain stable for decrypting existing
+  records and must be rotated only through a coordinated re-encryption procedure.
+- Telegram linking uses the approved long-polling pattern. A short-lived random
+  linking token is returned in a Telegram bot deep link; only its SHA-256 hash is
+  stored. The polling worker completes the link by resolving the token and storing
+  the chat ID encrypted. The link route is unavailable unless the bot token and
+  username are configured.
 
 ### 4.8 Billing (`/api/v1/billing`)
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/billing/subscription` | Current subscription status |
-| POST | `/billing/checkout` | Create Stripe Checkout session |
-| POST | `/billing/portal` | Create Stripe Customer Portal session |
-| POST | `/billing/webhook` | Stripe webhook (unauthenticated, signature-verified) |
+| POST | `/billing/checkout` | Create or resume PayPal subscription approval |
+| POST | `/billing/cancel` | Cancel the organization's PayPal subscription |
+| POST | `/billing/webhook` | PayPal webhook (unauthenticated, provider-verified) |
+
+#### B13 billing behavior
+
+- Subscription reads require `opportunities:read`; checkout and cancellation
+  require `billing:manage`. Checkout accepts a logical `plan_id` mapped to a
+  server-configured PayPal plan. PayPal credentials, webhook ID, and browser
+  return URLs remain server-side.
+- PayPal requests use a bounded timeout and `PayPal-Request-Id` derived from the
+  caller's `Idempotency-Key` for checkout and cancellation. Provider errors are
+  logged without credentials and surfaced as 503. Approval links are restricted
+  to HTTPS PayPal hosts.
+- Webhooks are limited to 1 MB and verified through PayPal's
+  `verify-webhook-signature` endpoint using the transmission headers, configured
+  webhook ID, and original event. Event IDs are committed transactionally with
+  tenant-scoped subscription updates, making retries idempotent. Unknown event
+  types are acknowledged and recorded without changing entitlements.
+- Stripe data remains inert legacy data after ADR 0010; it is not considered by
+  subscription reads or entitlement updates.
 
 ### 4.9 Operations (`/api/v1/admin`)
 
@@ -205,6 +315,17 @@ This is intentional: operational endpoints are consumed by machines (ALB target 
 | POST | `/admin/unmatched/{listing_id}/resolve` | Resolve unmatched listing |
 | GET | `/admin/duplicates` | Duplicate review queue |
 | GET | `/admin/audit` | Audit event log |
+
+#### B13 operations behavior
+
+- All admin routes require the server-side `admin:manage` permission (platform
+  operator allowlist). Source controls, feature flags, unmatched listing resolution,
+  duplicate groups, and audit events are backed by persisted records and audited.
+- Source health is reported as `unknown` until a health/heartbeat record exists;
+  the API does not infer operational health from listing fetch history.
+- Job and DLQ endpoints return 503 until a queue backend is configured. The API
+  does not fabricate job state or claim to replay/discard messages without a queue
+  adapter.
 
 ### 4.10 WebSocket
 
@@ -252,6 +373,12 @@ Idempotency-Key: idem_01JDEF...
 // If retried with same key, returns 200 with original result.
 // If different payload with same key, returns 422.
 ```
+
+The API validates client keys as 1–255 printable ASCII characters. Shared helpers
+derive a stable storage key scoped to organization, user, and operation, plus a
+canonical payload fingerprint. A write service must use the durable database
+uniqueness constraint and compare the payload on duplicate keys in its transaction;
+header validation alone does not provide idempotency.
 
 ---
 

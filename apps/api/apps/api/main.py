@@ -2,33 +2,42 @@ from __future__ import annotations
 
 import logging
 
-# Import ORM modules at composition boundaries so Base.metadata contains the
-# complete application schema for migrations and test database creation.
-import apps.api.catalog.infrastructure.models
-import apps.api.idempotency.infrastructure.models
-import apps.api.identity.infrastructure.models
-import apps.api.listings.infrastructure.models
-import apps.api.operations.infrastructure.models
-import apps.api.valuation.infrastructure.models  # noqa: F401
-from apps.api.alerts.api.router import router as alerts_router
-from apps.api.billing.api.router import router as billing_router
-from apps.api.feedback.api.router import router as feedback_router
-from apps.api.identity.api.auth import UnauthorizedError
-from apps.api.identity.api.router import router as identity_router
-from apps.api.identity.application.service import IdentitySubjectNotFoundError
+from apps.api.alerts.api.routes import router as alerts_router
+from apps.api.alerts.infrastructure import models as _alert_models  # noqa: F401
+from apps.api.billing.api.routes import router as billing_router
+from apps.api.billing.infrastructure import models as _billing_models  # noqa: F401
+from apps.api.catalog.api.routes import router as catalog_router
+from apps.api.catalog.infrastructure import models as _catalog_models  # noqa: F401
+from apps.api.duplicates.infrastructure import models as _duplicate_models  # noqa: F401
+from apps.api.feedback.api.routes import activity_router
+from apps.api.feedback.api.routes import router as feedback_router
+from apps.api.feedback.infrastructure import models as _feedback_models  # noqa: F401
+from apps.api.identity.api.routes import router as identity_router
+from apps.api.identity.infrastructure import models as _identity_models  # noqa: F401
+from apps.api.integrations.api.routes import router as integrations_router
+from apps.api.integrations.infrastructure import models as _integration_models  # noqa: F401
+from apps.api.listings.infrastructure import models as _listing_models  # noqa: F401
 from apps.api.middleware.error_handler import (
-    error_response,
-    register_api_error_handlers,
+    generic_exception_handler,
+    http_exception_handler,
+    pydantic_validation_handler,
 )
 from apps.api.middleware.tracing import TraceIdMiddleware
-from apps.api.opportunities.api.router import router as opportunities_router
+from apps.api.operations.api.routes import router as admin_router
+from apps.api.operations.infrastructure import models as _operations_models  # noqa: F401
+from apps.api.opportunities.api.routes import router as opportunities_router
+from apps.api.opportunities.infrastructure import models as _opportunity_models  # noqa: F401
+from apps.api.org_settings.api.routes import router as settings_router
 from apps.api.routes.health import health_handler
 from apps.api.routes.ready import ready_handler
 from apps.api.schemas import HealthResponse, ReadyResponse
 from apps.api.settings import settings
+from apps.api.valuation.infrastructure import models as _valuation_models  # noqa: F401
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
-from starlette.requests import Request
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError as PydanticValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.cors import CORSMiddleware
 
 logging.basicConfig(
     level=settings.log_level,
@@ -44,27 +53,26 @@ def create_app() -> FastAPI:
         debug=settings.debug,
     )
 
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(settings.cors_origin_allowlist),
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "Idempotency-Key",
+            "X-Organization-ID",
+            "X-Trace-Id",
+        ],
+        expose_headers=["X-Trace-Id"],
+    )
     app.add_middleware(TraceIdMiddleware)
-    register_api_error_handlers(app)
 
-    async def unauthorized_handler(
-        request: Request,
-        _exc: UnauthorizedError | IdentitySubjectNotFoundError,
-    ) -> JSONResponse:
-        if isinstance(_exc, IdentitySubjectNotFoundError):
-            logger.info(
-                "authenticated_subject_not_found",
-                extra={"trace_id": getattr(request.state, "trace_id", "unknown")},
-            )
-        return error_response(
-            request,
-            status_code=401,
-            code="UNAUTHORIZED",
-            message="Authentication is required or the identity is invalid.",
-        )
-
-    app.add_exception_handler(UnauthorizedError, unauthorized_handler)
-    app.add_exception_handler(IdentitySubjectNotFoundError, unauthorized_handler)
+    app.add_exception_handler(RequestValidationError, pydantic_validation_handler)
+    app.add_exception_handler(PydanticValidationError, pydantic_validation_handler)
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+    app.add_exception_handler(Exception, generic_exception_handler)
 
     app.add_api_route(
         "/health",
@@ -102,6 +110,16 @@ def create_app() -> FastAPI:
         },
         include_in_schema=False,
     )
+    app.include_router(identity_router)
+    app.include_router(catalog_router)
+    app.include_router(opportunities_router)
+    app.include_router(feedback_router)
+    app.include_router(activity_router)
+    app.include_router(alerts_router)
+    app.include_router(settings_router)
+    app.include_router(integrations_router)
+    app.include_router(billing_router)
+    app.include_router(admin_router)
 
     logger.info("app_started", extra={"trace_id": "bootstrap"})
 

@@ -9,5 +9,11 @@ description = "ChronoArb domain layer — pure business logic, value objects, an
 requires-python = ">=3.13"
 dependencies = []
 
+[project.optional-dependencies]
+test = [
+    "hypothesis>=6.100,<7",
+    "pytest>=8,<10",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["chronoarb"]

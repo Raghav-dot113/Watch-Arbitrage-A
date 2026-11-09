@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import Providers from "./Providers";
+import { AuthProvider } from "./AuthProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -25,7 +26,9 @@ export default function RootLayout({
       <body>
         <AppRouterCacheProvider options={{ enableCssLayer: true }}>
           <Providers>
-            <main>{children}</main>
+            <AuthProvider>
+              <main>{children}</main>
+            </AuthProvider>
           </Providers>
         </AppRouterCacheProvider>
       </body>

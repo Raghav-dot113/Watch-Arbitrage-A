@@ -1,11 +1,16 @@
+[importlinter]
+root_packages =
+    chronoarb
+    apps
+
 [importlinter:contract:chronoarb]
 name = ChronoArb package boundaries
 type = layers
 layers =
-    domain-python
-    source-adapters
-    api
-    worker
+    apps.api
+    (apps.worker)
+    (chronoarb.adapters)
+    chronoarb.domain
 
 [importlinter:contract:chronoarb-domain-isolation]
 name = Domain must not import adapters or apps
@@ -21,7 +26,7 @@ forbidden_modules =
 name = Adapters must not import apps
 type = forbidden
 source_modules =
-    chronoarb.adapters
+    chronoarb.domain.source_adapters
 forbidden_modules =
     apps.api
     apps.worker
@@ -31,7 +36,5 @@ name = Apps must not import other apps
 type = forbidden
 source_modules =
     apps.api
-    apps.worker
 forbidden_modules =
     apps.worker
-    apps.api

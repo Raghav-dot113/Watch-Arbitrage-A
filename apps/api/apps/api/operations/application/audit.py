@@ -8,31 +8,38 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from chronoarb.domain.ulid import generate_ulid
 
 
-class AuditService:
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
+async def record_audit_event(
+    session: AsyncSession,
+    *,
+    action: str,
+    resource_type: str,
+    resource_id: str,
+    organization_id: str | None = None,
+    user_id: str | None = None,
+    details: dict[str, Any] | None = None,
+    trace_id: str | None = None,
+    client_ip: str | None = None,
+) -> AuditEvent:
+    """Add and flush an audit event within the caller's transaction."""
+    for label, value in (
+        ("action", action),
+        ("resource_type", resource_type),
+        ("resource_id", resource_id),
+    ):
+        if not value.strip():
+            raise ValueError(f"{label} must not be empty")
 
-    async def record(
-        self,
-        *,
-        action: str,
-        resource_type: str,
-        resource_id: str,
-        organization_id: str | None,
-        user_id: str | None,
-        trace_id: str | None,
-        details: dict[str, Any] | None = None,
-    ) -> AuditEvent:
-        event = AuditEvent(
-            id=generate_ulid("aud"),
-            action=action,
-            resource_type=resource_type,
-            resource_id=resource_id,
-            organization_id=organization_id,
-            user_id=user_id,
-            trace_id=trace_id,
-            details=details,
-        )
-        self._session.add(event)
-        await self._session.flush()
-        return event
+    event = AuditEvent(
+        id=generate_ulid("aud"),
+        organization_id=organization_id,
+        user_id=user_id,
+        action=action,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        details=dict(details) if details is not None else None,
+        trace_id=trace_id,
+        client_ip=client_ip,
+    )
+    session.add(event)
+    await session.flush()
+    return event

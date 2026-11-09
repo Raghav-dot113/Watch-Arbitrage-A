@@ -1,48 +1,81 @@
 from __future__ import annotations
 
-from apps.api.identity.api.schemas import (
-    CurrentUserResponse,
-    UserOrganizationResponse,
-    UserResponse,
-)
+from apps.api.identity.infrastructure.models import Membership, Organization, User
 from apps.api.identity.infrastructure.repositories import (
     MembershipRepository,
+    OrganizationRepository,
     UserRepository,
 )
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from chronoarb.domain.ulid import generate_ulid
 
-class IdentitySubjectNotFoundError(Exception):
+
+class OrganizationSlugConflictError(Exception):
+    pass
+
+
+class OrganizationNotFoundError(Exception):
     pass
 
 
 class IdentityService:
     def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-        self._users = UserRepository(session)
-        self._memberships = MembershipRepository(session)
+        self.session = session
+        self.users = UserRepository(session)
+        self.organizations = OrganizationRepository(session)
+        self.memberships = MembershipRepository(session)
 
-    async def get_current_user_for_subject(self, cognito_sub: str) -> CurrentUserResponse:
-        user = await self._users.get_by_cognito_sub(cognito_sub)
+    async def current_user(self, user_id: str) -> tuple[User, list[Membership]]:
+        user = await self.users.get_by_id(User, user_id)
         if user is None:
-            raise IdentitySubjectNotFoundError
-        memberships = await self._memberships.list_memberships_for_user(user.id)
-        return CurrentUserResponse(
-            user=UserResponse.model_validate(user),
-            memberships=[
-                UserOrganizationResponse(
-                    id=membership.organization.id,
-                    name=membership.organization.name,
-                    slug=membership.organization.slug,
-                    role=membership.role,
-                    created_at=membership.organization.created_at,
-                )
-                for membership in memberships
-            ],
-        )
+            raise LookupError("Authenticated user no longer exists")
+        return user, await self.memberships.list_for_user(user_id)
 
-    async def list_organizations_for_subject(
-        self, cognito_sub: str
-    ) -> list[UserOrganizationResponse]:
-        current_user = await self.get_current_user_for_subject(cognito_sub)
-        return current_user.memberships
+    async def create_organization(self, user_id: str, *, name: str, slug: str) -> Organization:
+        if await self.organizations.get_by_slug(slug) is not None:
+            raise OrganizationSlugConflictError
+
+        organization = Organization(id=generate_ulid("org"), name=name, slug=slug)
+        membership = Membership(
+            id=generate_ulid("mem"),
+            organization_id=organization.id,
+            user_id=user_id,
+            role="owner",
+        )
+        self.session.add_all([organization, membership])
+        try:
+            await self.session.commit()
+        except IntegrityError as error:
+            await self.session.rollback()
+            raise OrganizationSlugConflictError from error
+        return organization
+
+    async def get_organization(self, organization_id: str, requested_id: str) -> Organization:
+        if organization_id != requested_id:
+            raise OrganizationNotFoundError
+        organization = await self.organizations.get_by_id(Organization, organization_id)
+        if organization is None:
+            raise OrganizationNotFoundError
+        return organization
+
+    async def update_organization(
+        self,
+        organization_id: str,
+        requested_id: str,
+        *,
+        name: str | None,
+        settings: dict[str, object] | None,
+        update_settings: bool,
+    ) -> Organization:
+        organization = await self.get_organization(organization_id, requested_id)
+        if name is not None:
+            organization.name = name
+        if update_settings:
+            organization.settings = settings
+        await self.session.commit()
+        return organization
+
+    async def list_members(self, organization_id: str) -> list[Membership]:
+        return await self.memberships.list_members(organization_id)
