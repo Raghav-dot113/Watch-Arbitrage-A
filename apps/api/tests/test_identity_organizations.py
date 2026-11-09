@@ -196,6 +196,31 @@ class TestIdentityOrganizations:
 
         assert response.status_code == 401
 
+    async def test_current_user_includes_profile_and_memberships(self, client, session):
+        user = add_user(session, "me-user")
+        organization = add_organization(session, "me-org")
+        await session.flush()
+        session.add(
+            Membership(
+                id=generate_ulid("mem"),
+                organization_id=organization.id,
+                user_id=user.id,
+                role="dealer",
+            )
+        )
+        await session.commit()
+
+        token = create_dev_token("me-user", settings.dev_jwt_secret)
+        response = await client.get(
+            "/api/v1/identity/me",
+            headers={"Authorization": "Bearer " + token},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["data"]["user"]["email"] == "me-user@example.com"
+        assert response.json()["data"]["memberships"][0]["role"] == "dealer"
+        assert set(response.json()["meta"]) == {"trace_id", "next_cursor", "has_more"}
+
     async def test_memberships_are_isolated_by_subject(self, client, session):
         first_user = add_user(session, "first-user")
         second_user = add_user(session, "second-user")

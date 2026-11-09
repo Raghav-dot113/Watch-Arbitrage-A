@@ -16,7 +16,7 @@ coverage therefore reflects test-file evidence, not a passing execution.
 |---|---|---:|---|---|---|---|
 | GET | `/health` | Yes | Yes (operational format) | N/A | Yes | Preserve and re-verify |
 | GET | `/ready` | Yes | Yes (operational format) | N/A | Yes | Preserve and re-verify |
-| GET | `/api/v1/identity/me` | No | N/A | N/A | No | Implement profile and memberships |
+| GET | `/api/v1/identity/me` | Yes | Yes | Yes | Added | Implemented profile and memberships (Phase 1) |
 | POST | `/api/v1/identity/organizations` | No | N/A | N/A | No | Create organization and owner membership atomically |
 | GET | `/api/v1/identity/organizations/{org_id}` | No | N/A | N/A | No | Implement tenant-checked detail |
 | PATCH | `/api/v1/identity/organizations/{org_id}` | No | N/A | N/A | No | Implement `members:manage` update |
@@ -33,13 +33,13 @@ coverage therefore reflects test-file evidence, not a passing execution.
 | PUT | `/api/v1/catalog/watch-lists/{id}` | No | N/A | N/A | No | Implement tenant-scoped update |
 | DELETE | `/api/v1/catalog/watch-lists/{id}` | No | N/A | N/A | No | Implement tenant-scoped delete |
 | GET | `/api/v1/watches/{ref_id}/market` | No | N/A | N/A | No | Implement market view with freshness metadata |
-| GET | `/api/v1/opportunities` | Yes | Partial (missing `has_more`) | Partial (membership only) | Partial | Add filters, pagination metadata, permission test |
+| GET | `/api/v1/opportunities` | Yes | Yes | Yes | Added; DB execution blocked | Added cursor pagination, feed envelope, and permission check (Phase 1) |
 | GET | `/api/v1/opportunities/{opp_id}` | No | N/A | N/A | No | Implement tenant-scoped analysis detail |
-| POST | `/api/v1/opportunities/{opp_id}/feedback` | No | N/A | N/A | No | Implement idempotent feedback; keep legacy alias |
+| POST | `/api/v1/opportunities/{opp_id}/feedback` | Yes | Yes | Yes | Added; DB execution blocked | Added idempotent canonical route and deprecated alias (Phase 1) |
 | GET | `/api/v1/opportunities/{opp_id}/history` | No | N/A | N/A | No | Implement material version history |
 | POST | `/api/v1/opportunities/{opp_id}/trade-outcome` | No | N/A | N/A | No | Implement idempotent, audited outcome |
-| GET | `/api/v1/alerts/rules` | Yes | No (bare list) | Partial (membership only) | No | Add response envelope and tests |
-| POST | `/api/v1/alerts/rules` | Yes | No (bare model) | No (dealer denied) | No | Use permission matrix; add envelope and tests |
+| GET | `/api/v1/alerts/rules` | Yes | Yes | Yes | Added; DB execution blocked | Added response envelope, pagination, and permission check (Phase 1) |
+| POST | `/api/v1/alerts/rules` | Yes | Yes | Yes | Added; DB execution blocked | Added dealer permission, envelope, audit, and idempotency (Phase 1) |
 | GET | `/api/v1/alerts/rules/{rule_id}` | No | N/A | N/A | No | Implement tenant-scoped detail |
 | PUT | `/api/v1/alerts/rules/{rule_id}` | No | N/A | N/A | No | Implement validated update |
 | DELETE | `/api/v1/alerts/rules/{rule_id}` | No | N/A | N/A | No | Implement tenant-scoped delete |
@@ -57,7 +57,7 @@ coverage therefore reflects test-file evidence, not a passing execution.
 | GET | `/api/v1/billing/subscription` | No | N/A | N/A | No | Implement stored subscription read |
 | POST | `/api/v1/billing/checkout` | No | N/A | N/A | No | Implement `billing:manage` gateway operation |
 | POST | `/api/v1/billing/portal` | No | N/A | N/A | No | Implement `billing:manage` gateway operation |
-| POST | `/api/v1/billing/webhook` | No | N/A | N/A | No | Reconcile subscription state; retain legacy alias |
+| POST | `/api/v1/billing/webhook` | Yes | Yes | Signature | Added; DB execution blocked | Added signed idempotent route and deprecated alias; reconciliation remains |
 | GET | `/api/v1/admin/sources` | No | N/A | N/A | No | Implement platform-ops-only list |
 | PATCH | `/api/v1/admin/sources/{source_id}` | No | N/A | N/A | No | Implement audited source controls |
 | GET | `/api/v1/admin/jobs` | No | N/A | N/A | No | Implement operations job list |
@@ -74,7 +74,7 @@ coverage therefore reflects test-file evidence, not a passing execution.
 | WS | `/ws` | No | N/A | N/A | No | Implement authenticated, organization-scoped events |
 | GET | `/api/v1/identity/organizations` | Yes (additional route) | Yes | Yes | Yes | Preserve; add to formal API design contract |
 
-## Baseline
+## Phase 0 Baseline
 
 - Registered contract routes: 5 of 58; the extra organization-list route is
   registered but absent from the API design route map.
@@ -82,3 +82,14 @@ coverage therefore reflects test-file evidence, not a passing execution.
 - The final checklist includes a WebSocket route, so the task packet's
   numbered list has 58 HTTP routes plus one WebSocket route (59 total rows
   including the two operational probes).
+
+## Phase 1 Progress
+
+- Eight of the 58 canonical routes are now registered. The extra organization
+  list route remains registered outside the API design route map.
+- Phase 1 added shared authorization, success/error envelopes, cursor
+  pagination, transactional idempotency records, audit-event creation, and
+  the current-user profile route.
+- API integration-test files were added or extended for the changed routes;
+  execution is still blocked at collection by Windows Application Control
+  rejecting SQLAlchemy's `_collections_cy` extension.

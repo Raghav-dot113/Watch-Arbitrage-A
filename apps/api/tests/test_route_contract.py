@@ -76,9 +76,12 @@ EXPECTED_MISSING_ROUTES: frozenset[Route] = frozenset(
     - {
         ("GET", "/health"),
         ("GET", "/ready"),
+        ("GET", "/api/v1/identity/me"),
         ("GET", "/api/v1/opportunities"),
         ("GET", "/api/v1/alerts/rules"),
         ("POST", "/api/v1/alerts/rules"),
+        ("POST", "/api/v1/opportunities/{opp_id}/feedback"),
+        ("POST", "/api/v1/billing/webhook"),
     }
 )
 

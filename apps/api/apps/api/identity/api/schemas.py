@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from apps.api.schemas import ApiErrorResponse
 from pydantic import BaseModel, ConfigDict
+
+ErrorResponse = ApiErrorResponse
 
 
 class OrganizationResponse(BaseModel):
@@ -44,22 +47,6 @@ class UserOrganizationResponse(BaseModel):
     created_at: datetime
 
 
-class ErrorEnvelope(BaseModel):
-    code: str
-    message: str
-    field_errors: dict[str, list[str]] | None = None
-    trace_id: str
-    retryable: bool = False
-
-
-class ErrorResponse(BaseModel):
-    error: ErrorEnvelope
-
-
-class OrganizationListMeta(BaseModel):
-    trace_id: str
-
-
-class OrganizationListResponse(BaseModel):
-    data: list[UserOrganizationResponse]
-    meta: OrganizationListMeta
+class CurrentUserResponse(BaseModel):
+    user: UserResponse
+    memberships: list[UserOrganizationResponse]
