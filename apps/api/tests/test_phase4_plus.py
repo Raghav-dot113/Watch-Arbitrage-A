@@ -67,3 +67,11 @@ async def test_billing_webhook_rejects_missing_signature(client) -> None:
         content='{"id":"evt_1","type":"test","data":{}}',
     )
     assert response.status_code == 401
+
+
+async def test_canonical_billing_webhook_rejects_missing_signature(client) -> None:
+    response = await client.post(
+        "/api/v1/billing/webhook",
+        content='{"id":"evt_1","type":"test","data":{}}',
+    )
+    assert response.status_code == 401

@@ -1,33 +1,12 @@
 from __future__ import annotations
 
-import base64
-import json
-from datetime import datetime
-
 from apps.api.infrastructure.repository import BaseRepository, TenantRepository
+from apps.api.pagination import decode_cursor, encode_cursor
 from apps.api.valuation.infrastructure.models import Opportunity, OpportunityView, Valuation
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from chronoarb.domain.ulid import generate_ulid
-
-
-def _encode_cursor(published_at: datetime, opportunity_id: str) -> str:
-    payload = json.dumps(
-        {"published_at": published_at.isoformat(), "id": opportunity_id},
-        separators=(",", ":"),
-    ).encode("utf-8")
-    return base64.urlsafe_b64encode(payload).rstrip(b"=").decode("ascii")
-
-
-def _decode_cursor(cursor: str) -> tuple[datetime, str]:
-    padding = "=" * (-len(cursor) % 4)
-    payload = json.loads(base64.urlsafe_b64decode(cursor + padding).decode("utf-8"))
-    published_at = datetime.fromisoformat(payload["published_at"])
-    opportunity_id = payload["id"]
-    if not isinstance(opportunity_id, str):
-        raise ValueError("Invalid opportunity cursor")
-    return published_at, opportunity_id
 
 
 class ValuationRepository(BaseRepository[Valuation]):
@@ -58,18 +37,20 @@ class OpportunityRepository(TenantRepository[Opportunity]):
         organization_id: str,
         limit: int = 50,
         cursor: str | None = None,
+        state: str | None = None,
     ) -> tuple[list[Opportunity], str | None]:
         if limit < 1:
             raise ValueError("limit must be positive")
 
-        query = (
-            select(Opportunity)
-            .where(Opportunity.organization_id == organization_id)
-            .order_by(Opportunity.published_at.desc(), Opportunity.id.desc())
-        )
+        query = select(Opportunity).where(Opportunity.organization_id == organization_id)
+        if state is not None:
+            query = query.where(Opportunity.state == state)
+        if state == "published":
+            query = query.where(Opportunity.published_at.is_not(None))
+        query = query.order_by(Opportunity.published_at.desc(), Opportunity.id.desc())
 
         if cursor is not None:
-            cursor_published_at, cursor_id = _decode_cursor(cursor)
+            cursor_published_at, cursor_id = decode_cursor(cursor)
             query = query.where(
                 or_(
                     Opportunity.published_at < cursor_published_at,
@@ -85,7 +66,7 @@ class OpportunityRepository(TenantRepository[Opportunity]):
         items = rows[:limit]
         next_cursor = None
         if has_more and items and items[-1].published_at is not None:
-            next_cursor = _encode_cursor(items[-1].published_at, items[-1].id)
+            next_cursor = encode_cursor(items[-1].published_at, items[-1].id)
         return items, next_cursor
 
     async def list_for_org(
@@ -99,11 +80,9 @@ class OpportunityRepository(TenantRepository[Opportunity]):
             organization_id=organization_id,
             limit=limit,
             cursor=cursor,
+            state=state,
         )
-        if state is None:
-            return items, next_cursor
-        filtered = [item for item in items if item.state == state]
-        return filtered, next_cursor
+        return items, next_cursor
 
     async def record_view(
         self,

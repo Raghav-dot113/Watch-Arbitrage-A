@@ -30,7 +30,7 @@ from apps.api.opportunities.infrastructure import models as _opportunity_models 
 from apps.api.org_settings.api.routes import router as settings_router
 from apps.api.routes.health import health_handler
 from apps.api.routes.ready import ready_handler
-from apps.api.schemas import ApiError, HealthResponse, ReadyResponse
+from apps.api.schemas import HealthResponse, ReadyResponse
 from apps.api.settings import settings
 from apps.api.valuation.infrastructure import models as _valuation_models  # noqa: F401
 from fastapi import FastAPI

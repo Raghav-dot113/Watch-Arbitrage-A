@@ -20,6 +20,8 @@ class OrganizationPatchRequest(BaseModel):
             raise ValueError("At least one organization field must be provided")
         return self
 
+ErrorResponse = ApiErrorResponse
+
 
 class OrganizationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

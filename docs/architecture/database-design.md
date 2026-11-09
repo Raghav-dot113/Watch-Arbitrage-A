@@ -299,6 +299,17 @@ retained until a later expand/contract cleanup migration.
 ### 2.11 Operations and Audit
 
 ```
+idempotency_records
+├── id (PK)            ULID
+├── organization_id    FK → organizations.id
+├── route_key          TEXT NOT NULL
+├── idempotency_key    TEXT NOT NULL
+├── request_hash       TEXT NOT NULL
+├── response_status    INT NOT NULL
+├── response_body      JSONB NOT NULL
+├── created_at         TIMESTAMPTZ
+└── UNIQUE (organization_id, route_key, idempotency_key)
+
 audit_events
 ├── id (PK)            ULID
 ├── organization_id    FK → organizations.id (nullable)
@@ -371,6 +382,8 @@ CREATE INDEX idx_alert_deliveries_opp ON alert_deliveries(opportunity_id, materi
 -- Outbox publishing
 CREATE INDEX idx_outbox_pending ON outbox_events(status, created_at)
   WHERE status = 'pending';
+
+-- The idempotency scope constraint provides the required lookup index.
 
 -- Audit queries
 CREATE INDEX idx_audit_org_time ON audit_events(organization_id, created_at DESC);
