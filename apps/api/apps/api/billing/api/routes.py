@@ -160,6 +160,11 @@ async def paypal_webhook(
         "paypal-transmission-sig": paypal_transmission_sig or "",
         "paypal-transmission-time": paypal_transmission_time or "",
     }
+    if not any(headers.values()):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="PayPal webhook signature is invalid",
+        )
     try:
         created = await PayPalBillingService(session).process_webhook(
             await _read_webhook_body(request),
@@ -181,6 +186,39 @@ async def paypal_webhook(
             detail="PayPal webhook verification is not available",
         ) from error
     return PayPalWebhookResponse(duplicate=not created)
+
+
+@router.post(
+    "/stripe/webhook",
+    response_model=PayPalWebhookResponse,
+    deprecated=True,
+)
+async def paypal_webhook_legacy(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    paypal_auth_algo: Annotated[
+        str | None, Header(alias="PayPal-Auth-Algo", max_length=128)
+    ] = None,
+    paypal_cert_url: Annotated[str | None, Header(alias="PayPal-Cert-Url", max_length=2048)] = None,
+    paypal_transmission_id: Annotated[
+        str | None, Header(alias="PayPal-Transmission-Id", max_length=256)
+    ] = None,
+    paypal_transmission_sig: Annotated[
+        str | None, Header(alias="PayPal-Transmission-Sig", max_length=2048)
+    ] = None,
+    paypal_transmission_time: Annotated[
+        str | None, Header(alias="PayPal-Transmission-Time", max_length=128)
+    ] = None,
+) -> PayPalWebhookResponse:
+    return await paypal_webhook(
+        request,
+        session,
+        paypal_auth_algo,
+        paypal_cert_url,
+        paypal_transmission_id,
+        paypal_transmission_sig,
+        paypal_transmission_time,
+    )
 
 
 async def _read_webhook_body(request: Request) -> bytes:

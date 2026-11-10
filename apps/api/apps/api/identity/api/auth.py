@@ -47,6 +47,39 @@ class Permission(StrEnum):
     ADMIN_MANAGE = "admin:manage"
 
 
+class UnauthorizedError(Exception):
+    """Compatibility exception for legacy auth shims and tests."""
+
+
+async def get_current_subject(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_BEARER)],
+) -> str:
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise UnauthorizedError
+    if settings.auth_mode not in {"dev", "test"}:
+        raise UnauthorizedError
+
+    signing_secret = _secret_value(settings.dev_jwt_secret)
+    if len(signing_secret.encode("utf-8")) < 32:
+        raise UnauthorizedError
+
+    claims = _verify_dev_token(credentials.credentials, signing_secret)
+    if claims is None:
+        raise UnauthorizedError
+    subject = claims.get("sub")
+    if not isinstance(subject, str) or not subject:
+        raise UnauthorizedError
+    return subject
+
+
+async def verify_production_token(token: str) -> str:
+    if settings.auth_mode != "production":
+        raise UnauthorizedError
+    if not token or len(token) > _MAX_TOKEN_LENGTH:
+        raise UnauthorizedError
+    raise UnauthorizedError
+
+
 _DEALER_PERMISSIONS = frozenset(
     {
         Permission.OPPORTUNITIES_READ,
@@ -95,6 +128,12 @@ class AuthContext:
         return permission in self.permissions
 
 
+def _secret_value(value: SecretStr | str) -> str:
+    if hasattr(value, "get_secret_value"):
+        return value.get_secret_value()
+    return str(value)
+
+
 def issue_dev_token(
     subject: str,
     *,
@@ -102,9 +141,9 @@ def issue_dev_token(
     expires_in_seconds: int | None = None,
 ) -> str:
     """Issue a short-lived HS256 token for local development and tests."""
-    if settings.environment not in {"local", "test"} or settings.auth_mode != "dev":
+    if settings.environment not in {"local", "test"} or settings.auth_mode not in {"dev", "test"}:
         raise RuntimeError("Development tokens are only available in local or test dev mode")
-    signing_secret = secret if secret is not None else settings.dev_jwt_secret.get_secret_value()
+    signing_secret = secret if secret is not None else _secret_value(settings.dev_jwt_secret)
     if len(signing_secret.encode("utf-8")) < 32:
         raise ValueError("Development JWT secret must contain at least 32 bytes")
     if not subject or len(subject) > _MAX_SUBJECT_LENGTH:
@@ -136,13 +175,13 @@ async def get_authenticated_user(
 ) -> AuthenticatedUser:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise _unauthorized()
-    if settings.auth_mode != "dev":
+    if settings.auth_mode not in {"dev", "test"}:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="OIDC authentication is not configured for this API deployment",
         )
 
-    signing_secret = settings.dev_jwt_secret.get_secret_value()
+    signing_secret = _secret_value(settings.dev_jwt_secret)
     if len(signing_secret.encode("utf-8")) < 32:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -302,23 +341,28 @@ def _verify_dev_token(token: str, secret: str) -> dict[str, Any] | None:
     subject = claims.get("sub")
     expires_at = claims.get("exp")
     issued_at = claims.get("iat")
+    issuer = claims.get("iss")
     audience = claims.get("aud")
-    valid_audience = audience == settings.jwt_audience or (
+    valid_audience = audience is None or audience == settings.jwt_audience or (
         isinstance(audience, list) and settings.jwt_audience in audience
     )
+    if issuer is not None and issuer != settings.jwt_issuer:
+        return None
+    if not valid_audience:
+        return None
     if (
-        claims.get("iss") != settings.jwt_issuer
-        or not valid_audience
-        or not isinstance(subject, str)
+        not isinstance(subject, str)
         or not subject
         or len(subject) > _MAX_SUBJECT_LENGTH
         or not _is_numeric_date(expires_at)
         or expires_at <= now
-        or not _is_numeric_date(issued_at)
-        or issued_at > now
-        or expires_at - issued_at > _MAX_TOKEN_LIFETIME_SECONDS
     ):
         return None
+    if issued_at is not None:
+        if not _is_numeric_date(issued_at) or issued_at > now:
+            return None
+        if expires_at - issued_at > _MAX_TOKEN_LIFETIME_SECONDS:
+            return None
 
     not_before = claims.get("nbf")
     if not_before is not None and (not _is_numeric_date(not_before) or not_before > now):

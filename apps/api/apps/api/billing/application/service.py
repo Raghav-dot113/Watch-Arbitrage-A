@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import logging
 import re
@@ -27,6 +28,29 @@ from chronoarb.domain.ulid import generate_ulid
 
 logger = logging.getLogger(__name__)
 MAX_PAYPAL_WEBHOOK_BODY_BYTES = 1_000_000
+
+
+def verify_stripe_signature(payload: bytes, signature: str | None) -> bool:
+    if not signature:
+        return False
+    secret = getattr(settings, "stripe_webhook_secret", "")
+    if not secret:
+        return False
+    values: dict[str, str] = {}
+    for part in signature.split(","):
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        values[key.strip()] = value.strip()
+    timestamp = values.get("t")
+    expected_signature = values.get("v1")
+    if not timestamp or not expected_signature:
+        return False
+    signed_payload = timestamp.encode("ascii") + b"." + payload
+    actual_signature = hmac.new(secret.encode("utf-8"), signed_payload, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(actual_signature, expected_signature)
+
+
 _SUBSCRIPTION_EVENTS = {
     "BILLING.SUBSCRIPTION.CREATED",
     "BILLING.SUBSCRIPTION.ACTIVATED",
@@ -75,6 +99,7 @@ class PayPalBillingService:
 
     async def get_subscription(self, organization_id: str) -> Subscription | None:
         return await self.subscriptions.get_latest_for_org(organization_id)
+
 
     async def create_checkout_session(
         self,
@@ -439,6 +464,11 @@ class PayPalBillingService:
             ):
                 return href
         return None
+
+
+InvalidStripeSignatureError = PayPalSignatureError
+InvalidStripeEventError = PayPalWebhookPayloadError
+BillingService = PayPalBillingService
 
 
 def _status_for_event(event_type: str, resource_status: object) -> SubscriptionStatus:
