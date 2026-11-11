@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     platform_ops_subjects: str = ""
     cors_origins: str = "http://localhost:3000"
     integration_encryption_key: SecretStr = SecretStr("")
+    channel3_api_key: SecretStr = SecretStr("")
     telegram_bot_token: SecretStr = SecretStr("")
     telegram_bot_username: str = ""
     paypal_client_id: str = ""

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import logging
 from typing import Annotated
 
 from apps.api.catalog.api.schemas import (
     BrandResponse,
+    Channel3SearchRequest,
     ReferenceDetailResponse,
     ReferencePageResponse,
     ReferenceResponse,
@@ -11,11 +13,18 @@ from apps.api.catalog.api.schemas import (
     WatchListResponse,
     WatchListUpdateRequest,
 )
+from apps.api.catalog.application.channel3 import (
+    Channel3NotConfiguredError,
+    Channel3SearchGateway,
+    Channel3SearchResponse,
+    Channel3UnavailableError,
+)
 from apps.api.catalog.application.service import (
     CatalogService,
     InvalidWatchListReferencesError,
     WatchListNotFoundError,
 )
+from apps.api.catalog.infrastructure.channel3_client import Channel3Client
 from apps.api.identity.api.auth import (
     AuthContext,
     Permission,
@@ -26,12 +35,59 @@ from apps.api.identity.api.auth import (
 from apps.api.infrastructure.api_response import SuccessEnvelope, success_response
 from apps.api.infrastructure.database import get_db
 from apps.api.infrastructure.http_status import HTTP_422_UNPROCESSABLE_ENTITY
+from apps.api.settings import settings
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from chronoarb.domain.errors import ValidationError
 
 router = APIRouter(prefix="/api/v1/catalog", tags=["catalog"])
+logger = logging.getLogger("chronoarb.api")
+
+
+def get_channel3_search_gateway() -> Channel3SearchGateway:
+    return Channel3Client(
+        settings.channel3_api_key,
+        settings.provider_request_timeout_seconds,
+    )
+
+
+@router.post(
+    "/channel3/search",
+    response_model=SuccessEnvelope[Channel3SearchResponse],
+    response_model_exclude_none=True,
+)
+async def search_channel3_watches(
+    payload: Channel3SearchRequest,
+    request: Request,
+    actor: Annotated[AuthContext, Depends(require_permissions(Permission.OPPORTUNITIES_READ))],
+    gateway: Annotated[Channel3SearchGateway, Depends(get_channel3_search_gateway)],
+) -> dict[str, object]:
+    _organization_id(actor)
+    try:
+        result = await gateway.search(
+            query=payload.query,
+            limit=payload.limit,
+            page_token=payload.page_token,
+        )
+    except Channel3NotConfiguredError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Watch search provider is not configured.",
+        ) from error
+    except Channel3UnavailableError as error:
+        logger.warning(
+            "channel3_search_unavailable",
+            extra={
+                "trace_id": getattr(request.state, "trace_id", "unknown"),
+                "provider_status_code": error.status_code,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Watch search is temporarily unavailable.",
+        ) from error
+    return success_response(request, result)
 
 
 @router.get(

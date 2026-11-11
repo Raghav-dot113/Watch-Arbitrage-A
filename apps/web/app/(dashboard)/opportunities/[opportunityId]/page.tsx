@@ -1,6 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React from "react";
+import React, { use } from "react";
 import {
   Box,
   Button,
@@ -57,10 +59,10 @@ const STATE_LABEL: Record<string, string> = {
 export default function OpportunityDetailPage({
   params,
 }: {
-  params: { opportunityId: string };
+  params: Promise<{ opportunityId: string }>;
 }) {
   const router = useRouter();
-  const opportunityId = params.opportunityId;
+  const { opportunityId } = use(params);
   const { data, isLoading, isError, error } = useOpportunity(opportunityId);
   const recordFeedback = useRecordFeedback(opportunityId);
   const recordOutcome = useRecordTradeOutcome(opportunityId);

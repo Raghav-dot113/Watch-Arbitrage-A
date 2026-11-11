@@ -1,12 +1,147 @@
 components:
   schemas:
-    AlertRuleRequest:
+    ActivityItemResponse:
+      properties:
+        acquisition_currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Acquisition Currency
+        acquisition_price:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Acquisition Price
+        actual_profit:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Actual Profit
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        days_to_sell:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Days To Sell
+        decision:
+          anyOf:
+          - enum:
+            - purchased
+            - contacted
+            - dismissed
+            type: string
+          - type: 'null'
+          title: Decision
+        event_type:
+          enum:
+          - feedback
+          - outcome
+          title: Event Type
+          type: string
+        id:
+          title: Id
+          type: string
+        notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Notes
+        opportunity_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Opportunity Id
+        reference_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reference Id
+        resale_currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resale Currency
+        resale_price:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resale Price
+        user_id:
+          title: User Id
+          type: string
+      required:
+      - id
+      - event_type
+      - user_id
+      - opportunity_id
+      - reference_id
+      - decision
+      - notes
+      - acquisition_price
+      - acquisition_currency
+      - resale_price
+      - resale_currency
+      - actual_profit
+      - days_to_sell
+      - created_at
+      title: ActivityItemResponse
+      type: object
+    AlertDeliveryResponse:
+      properties:
+        channel:
+          title: Channel
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        delivery_status:
+          enum:
+          - pending
+          - sent
+          - failed
+          - suppressed
+          title: Delivery Status
+          type: string
+        id:
+          title: Id
+          type: string
+        material_version:
+          title: Material Version
+          type: integer
+        opportunity_id:
+          title: Opportunity Id
+          type: string
+        rule_id:
+          title: Rule Id
+          type: string
+      required:
+      - id
+      - rule_id
+      - opportunity_id
+      - material_version
+      - channel
+      - delivery_status
+      - created_at
+      title: AlertDeliveryResponse
+      type: object
+    AlertRuleCreateRequest:
       additionalProperties: false
       properties:
         channels:
-          additionalProperties: true
+          items:
+            enum:
+            - in_app
+            - push
+            - telegram
+            type: string
+          maxItems: 3
+          minItems: 1
           title: Channels
-          type: object
+          type: array
         cooldown_minutes:
           default: 60
           maximum: 10080.0
@@ -14,28 +149,110 @@ components:
           title: Cooldown Minutes
           type: integer
         filters:
-          additionalProperties: true
-          title: Filters
-          type: object
+          $ref: '#/components/schemas/AlertRuleFilters-Input'
         is_enabled:
           default: true
           title: Is Enabled
           type: boolean
         name:
-          maxLength: 200
+          maxLength: 120
           minLength: 1
           title: Name
           type: string
       required:
       - name
-      title: AlertRuleRequest
+      - channels
+      title: AlertRuleCreateRequest
+      type: object
+    AlertRuleFilters-Input:
+      additionalProperties: false
+      properties:
+        conditions:
+          anyOf:
+          - items:
+              type: string
+            maxItems: 20
+            type: array
+          - type: 'null'
+          title: Conditions
+        max_acquisition:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Max Acquisition
+        min_profit:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Min Profit
+        reference_ids:
+          anyOf:
+          - items:
+              type: string
+            maxItems: 50
+            type: array
+          - type: 'null'
+          title: Reference Ids
+      title: AlertRuleFilters
+      type: object
+    AlertRuleFilters-Output:
+      additionalProperties: false
+      properties:
+        conditions:
+          anyOf:
+          - items:
+              type: string
+            maxItems: 20
+            type: array
+          - type: 'null'
+          title: Conditions
+        max_acquisition:
+          anyOf:
+          - decimal_places: 2
+            ge: 0
+            max_digits: 18
+            type: string
+          - type: 'null'
+          title: Max Acquisition
+        min_profit:
+          anyOf:
+          - decimal_places: 2
+            ge: 0
+            max_digits: 18
+            type: string
+          - type: 'null'
+          title: Min Profit
+        reference_ids:
+          anyOf:
+          - items:
+              type: string
+            maxItems: 50
+            type: array
+          - type: 'null'
+          title: Reference Ids
+      title: AlertRuleFilters
       type: object
     AlertRuleResponse:
       properties:
         channels:
-          additionalProperties: true
+          items:
+            enum:
+            - in_app
+            - push
+            - telegram
+            type: string
           title: Channels
-          type: object
+          type: array
         cooldown_minutes:
           title: Cooldown Minutes
           type: integer
@@ -43,10 +260,11 @@ components:
           format: date-time
           title: Created At
           type: string
+        created_by:
+          title: Created By
+          type: string
         filters:
-          additionalProperties: true
-          title: Filters
-          type: object
+          $ref: '#/components/schemas/AlertRuleFilters-Output'
         id:
           title: Id
           type: string
@@ -59,66 +277,648 @@ components:
         organization_id:
           title: Organization Id
           type: string
+        updated_at:
+          format: date-time
+          title: Updated At
+          type: string
       required:
       - id
       - organization_id
+      - created_by
       - name
       - filters
       - channels
       - cooldown_minutes
       - is_enabled
       - created_at
+      - updated_at
       title: AlertRuleResponse
       type: object
-    ErrorEnvelope:
+    AlertTestAcceptedResponse:
       properties:
-        code:
-          title: Code
+        event_id:
+          title: Event Id
           type: string
-        field_errors:
+        status:
+          const: pending
+          title: Status
+          type: string
+      required:
+      - event_id
+      - status
+      title: AlertTestAcceptedResponse
+      type: object
+    AuditEventResponse:
+      properties:
+        action:
+          title: Action
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        details:
           anyOf:
-          - additionalProperties:
-              items:
-                type: string
-              type: array
+          - additionalProperties: true
             type: object
           - type: 'null'
-          title: Field Errors
-        message:
-          title: Message
+          title: Details
+        id:
+          title: Id
           type: string
-        retryable:
-          default: false
-          title: Retryable
-          type: boolean
+        organization_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Organization Id
+        resource_id:
+          title: Resource Id
+          type: string
+        resource_type:
+          title: Resource Type
+          type: string
         trace_id:
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Trace Id
+        user_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: User Id
+      required:
+      - id
+      - organization_id
+      - user_id
+      - action
+      - resource_type
+      - resource_id
+      - details
+      - trace_id
+      - created_at
+      title: AuditEventResponse
+      type: object
+    BrandResponse:
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        id:
+          title: Id
+          type: string
+        name:
+          title: Name
+          type: string
+        slug:
+          title: Slug
           type: string
       required:
-      - code
-      - message
-      - trace_id
-      title: ErrorEnvelope
+      - id
+      - name
+      - slug
+      - created_at
+      title: BrandResponse
       type: object
-    ErrorResponse:
+    Channel3Brand:
+      additionalProperties: true
       properties:
-        error:
-          $ref: '#/components/schemas/ErrorEnvelope'
+        id:
+          title: Id
+          type: string
+        name:
+          title: Name
+          type: string
       required:
-      - error
-      title: ErrorResponse
+      - id
+      - name
+      title: Channel3Brand
       type: object
-    FeedbackRequest:
+    Channel3Image:
+      additionalProperties: true
+      properties:
+        alt_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Alt Text
+        cleaned_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Cleaned Url
+        is_main_image:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Is Main Image
+        shot_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Shot Type
+        url:
+          title: Url
+          type: string
+      required:
+      - url
+      title: Channel3Image
+      type: object
+    Channel3Offer:
+      additionalProperties: true
+      properties:
+        availability:
+          title: Availability
+          type: string
+        condition:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Condition
+        domain:
+          title: Domain
+          type: string
+        max_commission_rate:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Max Commission Rate
+        price:
+          $ref: '#/components/schemas/Channel3Price'
+        url:
+          title: Url
+          type: string
+      required:
+      - url
+      - domain
+      - price
+      - availability
+      title: Channel3Offer
+      type: object
+    Channel3Price:
+      additionalProperties: true
+      properties:
+        amount:
+          title: Amount
+          type: string
+        currency:
+          title: Currency
+          type: string
+      required:
+      - amount
+      - currency
+      title: Channel3Price
+      type: object
+    Channel3Product:
+      additionalProperties: true
+      properties:
+        brands:
+          items:
+            $ref: '#/components/schemas/Channel3Brand'
+          title: Brands
+          type: array
+        category:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Category
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        id:
+          title: Id
+          type: string
+        images:
+          items:
+            $ref: '#/components/schemas/Channel3Image'
+          title: Images
+          type: array
+        key_features:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Key Features
+        materials:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Materials
+        offers:
+          items:
+            $ref: '#/components/schemas/Channel3Offer'
+          title: Offers
+          type: array
+        structured_attributes:
+          additionalProperties: true
+          title: Structured Attributes
+          type: object
+        title:
+          title: Title
+          type: string
+      required:
+      - id
+      - title
+      title: Channel3Product
+      type: object
+    Channel3SearchRequest:
+      properties:
+        limit:
+          default: 20
+          maximum: 50.0
+          minimum: 1.0
+          title: Limit
+          type: integer
+        page_token:
+          anyOf:
+          - maxLength: 2048
+            minLength: 1
+            type: string
+          - type: 'null'
+          title: Page Token
+        query:
+          maxLength: 256
+          minLength: 2
+          title: Query
+          type: string
+      required:
+      - query
+      title: Channel3SearchRequest
+      type: object
+    Channel3SearchResponse:
+      additionalProperties: true
+      properties:
+        fetched_at:
+          format: date-time
+          title: Fetched At
+          type: string
+        next_page_token:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Page Token
+        products:
+          items:
+            $ref: '#/components/schemas/Channel3Product'
+          title: Products
+          type: array
+      required:
+      - products
+      - fetched_at
+      title: Channel3SearchResponse
+      type: object
+    CurrentUserResponse:
+      properties:
+        memberships:
+          items:
+            $ref: '#/components/schemas/OrganizationMembershipResponse'
+          title: Memberships
+          type: array
+        user:
+          $ref: '#/components/schemas/UserResponse'
+      required:
+      - user
+      - memberships
+      title: CurrentUserResponse
+      type: object
+    DuplicateGroupResponse:
+      properties:
+        confidence:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Confidence
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        id:
+          title: Id
+          type: string
+        listing_ids:
+          items:
+            type: string
+          title: Listing Ids
+          type: array
+        method:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Method
+        representative_id:
+          title: Representative Id
+          type: string
+      required:
+      - id
+      - representative_id
+      - method
+      - confidence
+      - listing_ids
+      - created_at
+      title: DuplicateGroupResponse
+      type: object
+    FeatureFlagPatchRequest:
+      additionalProperties: false
+      properties:
+        enabled:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Enabled
+        expires_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Expires At
+        organization_ids:
+          anyOf:
+          - items:
+              type: string
+            maxItems: 1000
+            type: array
+          - type: 'null'
+          title: Organization Ids
+        rollout_pct:
+          anyOf:
+          - maximum: 100.0
+            minimum: 0.0
+            type: integer
+          - type: 'null'
+          title: Rollout Pct
+      title: FeatureFlagPatchRequest
+      type: object
+    FeatureFlagResponse:
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        enabled:
+          title: Enabled
+          type: boolean
+        expires_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Expires At
+        id:
+          title: Id
+          type: string
+        key:
+          title: Key
+          type: string
+        organization_ids:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Organization Ids
+        rollout_pct:
+          title: Rollout Pct
+          type: integer
+      required:
+      - id
+      - key
+      - description
+      - enabled
+      - organization_ids
+      - rollout_pct
+      - expires_at
+      - created_at
+      title: FeatureFlagResponse
+      type: object
+    FeeDefaults-Input:
+      additionalProperties: false
+      properties:
+        acquisition_risk_reserve:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Acquisition Risk Reserve
+        authentication_cost:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Authentication Cost
+        buyer_fee:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Buyer Fee
+        exit_risk_reserve:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Exit Risk Reserve
+        financing_cost:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Financing Cost
+        inbound_shipping:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Inbound Shipping
+        outbound_shipping:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Outbound Shipping
+        resale_payment_cost:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Resale Payment Cost
+        selling_fee:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Selling Fee
+        service_reserve:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Service Reserve
+        tax_and_duty:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Tax And Duty
+      title: FeeDefaults
+      type: object
+    FeeDefaults-Output:
+      additionalProperties: false
+      properties:
+        acquisition_risk_reserve:
+          anyOf:
+          - decimal_places: 2
+            ge: 0
+            max_digits: 18
+            type: string
+          - type: 'null'
+          title: Acquisition Risk Reserve
+        authentication_cost:
+          anyOf:
+          - decimal_places: 2
+            ge: 0
+            max_digits: 18
+            type: string
+          - type: 'null'
+          title: Authentication Cost
+        buyer_fee:
+          anyOf:
+          - decimal_places: 2
+            ge: 0
+            max_digits: 18
+            type: string
+          - type: 'null'
+          title: Buyer Fee
+        exit_risk_reserve:
+          anyOf:
+          - decimal_places: 2
+            ge: 0
+            max_digits: 18
+            type: string
+          - type: 'null'
+          title: Exit Risk Reserve
+        financing_cost:
+          anyOf:
+          - decimal_places: 2
+            ge: 0
+            max_digits: 18
+            type: string
+          - type: 'null'
+          title: Financing Cost
+        inbound_shipping:
+          anyOf:
+          - decimal_places: 2
+            ge: 0
+            max_digits: 18
+            type: string
+          - type: 'null'
+          title: Inbound Shipping
+        outbound_shipping:
+          anyOf:
+          - decimal_places: 2
+            ge: 0
+            max_digits: 18
+            type: string
+          - type: 'null'
+          title: Outbound Shipping
+        resale_payment_cost:
+          anyOf:
+          - decimal_places: 2
+            ge: 0
+            max_digits: 18
+            type: string
+          - type: 'null'
+          title: Resale Payment Cost
+        selling_fee:
+          anyOf:
+          - decimal_places: 2
+            ge: 0
+            max_digits: 18
+            type: string
+          - type: 'null'
+          title: Selling Fee
+        service_reserve:
+          anyOf:
+          - decimal_places: 2
+            ge: 0
+            max_digits: 18
+            type: string
+          - type: 'null'
+          title: Service Reserve
+        tax_and_duty:
+          anyOf:
+          - decimal_places: 2
+            ge: 0
+            max_digits: 18
+            type: string
+          - type: 'null'
+          title: Tax And Duty
+      title: FeeDefaults
+      type: object
+    FeedbackCreateRequest:
       additionalProperties: false
       properties:
         decision:
-          pattern: ^(purchased|contacted|dismissed)$
+          enum:
+          - purchased
+          - contacted
+          - dismissed
           title: Decision
-          type: string
-        idempotency_key:
-          maxLength: 128
-          minLength: 1
-          title: Idempotency Key
           type: string
         notes:
           anyOf:
@@ -126,15 +926,21 @@ components:
             type: string
           - type: 'null'
           title: Notes
-        opportunity_id:
-          minLength: 1
-          title: Opportunity Id
+      required:
+      - decision
+      title: FeedbackCreateRequest
+      type: object
+    FeedbackCreateResponse:
+      properties:
+        feedback:
+          $ref: '#/components/schemas/FeedbackResponse'
+        opportunity_state:
+          title: Opportunity State
           type: string
       required:
-      - opportunity_id
-      - decision
-      - idempotency_key
-      title: FeedbackRequest
+      - feedback
+      - opportunity_state
+      title: FeedbackCreateResponse
       type: object
     FeedbackResponse:
       properties:
@@ -143,6 +949,10 @@ components:
           title: Created At
           type: string
         decision:
+          enum:
+          - purchased
+          - contacted
+          - dismissed
           title: Decision
           type: string
         id:
@@ -156,8 +966,16 @@ components:
         opportunity_id:
           title: Opportunity Id
           type: string
+        organization_id:
+          title: Organization Id
+          type: string
+        user_id:
+          title: User Id
+          type: string
       required:
       - id
+      - organization_id
+      - user_id
       - opportunity_id
       - decision
       - notes
@@ -173,37 +991,178 @@ components:
           type: array
       title: HTTPValidationError
       type: object
-    OpportunityListResponse:
+    IntegrationStatusResponse:
       properties:
-        data:
+        push_devices:
           items:
-            $ref: '#/components/schemas/OpportunityResponse'
-          title: Data
+            $ref: '#/components/schemas/PushDeviceResponse'
+          title: Push Devices
           type: array
-        meta:
-          additionalProperties: true
-          title: Meta
-          type: object
+        telegram_link_expires_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Telegram Link Expires At
+        telegram_status:
+          enum:
+          - disconnected
+          - pending
+          - connected
+          title: Telegram Status
+          type: string
       required:
-      - data
-      - meta
-      title: OpportunityListResponse
+      - telegram_status
+      - telegram_link_expires_at
+      - push_devices
+      title: IntegrationStatusResponse
       type: object
-    OpportunityResponse:
+    OpportunityDetailResponse:
       properties:
+        confidence:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Confidence
+        cost_assumptions_version:
+          title: Cost Assumptions Version
+          type: string
         created_at:
           format: date-time
           title: Created At
           type: string
+        data_age_seconds:
+          title: Data Age Seconds
+          type: integer
         id:
           title: Id
           type: string
+        listing:
+          $ref: '#/components/schemas/OpportunityListingResponse'
         listing_id:
           title: Listing Id
           type: string
         material_version:
           title: Material Version
           type: integer
+        my_decision:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: My Decision
+        negative_factors:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - items: {}
+            type: array
+          - type: 'null'
+          title: Negative Factors
+        observation_at:
+          format: date-time
+          title: Observation At
+          type: string
+        organization_id:
+          title: Organization Id
+          type: string
+        positive_factors:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - items: {}
+            type: array
+          - type: 'null'
+          title: Positive Factors
+        published_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Published At
+        score:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Score
+        state:
+          enum:
+          - published
+          - dismissed
+          - contacted
+          - purchased
+          - expired
+          title: State
+          type: string
+        state_changed_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: State Changed At
+        valuation:
+          $ref: '#/components/schemas/OpportunityValuationResponse'
+        valuation_id:
+          title: Valuation Id
+          type: string
+        valuation_version:
+          title: Valuation Version
+          type: string
+      required:
+      - id
+      - organization_id
+      - listing_id
+      - valuation_id
+      - material_version
+      - score
+      - state
+      - positive_factors
+      - negative_factors
+      - published_at
+      - state_changed_at
+      - created_at
+      - data_age_seconds
+      - confidence
+      - valuation_version
+      - cost_assumptions_version
+      - my_decision
+      - listing
+      - valuation
+      - observation_at
+      title: OpportunityDetailResponse
+      type: object
+    OpportunityFeedItem:
+      properties:
+        confidence:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Confidence
+        cost_assumptions_version:
+          title: Cost Assumptions Version
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        data_age_seconds:
+          title: Data Age Seconds
+          type: integer
+        id:
+          title: Id
+          type: string
+        listing:
+          $ref: '#/components/schemas/OpportunityListingResponse'
+        listing_id:
+          title: Listing Id
+          type: string
+        material_version:
+          title: Material Version
+          type: integer
+        my_decision:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: My Decision
         negative_factors:
           anyOf:
           - additionalProperties: true
@@ -235,10 +1194,27 @@ components:
           - type: 'null'
           title: Score
         state:
+          enum:
+          - published
+          - dismissed
+          - contacted
+          - purchased
+          - expired
           title: State
           type: string
+        state_changed_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: State Changed At
+        valuation:
+          $ref: '#/components/schemas/OpportunityValuationResponse'
         valuation_id:
           title: Valuation Id
+          type: string
+        valuation_version:
+          title: Valuation Version
           type: string
       required:
       - id
@@ -248,51 +1224,495 @@ components:
       - material_version
       - score
       - state
+      - positive_factors
+      - negative_factors
       - published_at
+      - state_changed_at
       - created_at
-      title: OpportunityResponse
+      - data_age_seconds
+      - confidence
+      - valuation_version
+      - cost_assumptions_version
+      - my_decision
+      - listing
+      - valuation
+      title: OpportunityFeedItem
       type: object
-    OrganizationListMeta:
+    OpportunityHistoryItemResponse:
       properties:
-        trace_id:
-          title: Trace Id
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        id:
+          title: Id
+          type: string
+        listing_id:
+          title: Listing Id
+          type: string
+        material_version:
+          title: Material Version
+          type: integer
+        published_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Published At
+        score:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Score
+        state:
+          title: State
+          type: string
+        state_changed_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: State Changed At
+        valuation:
+          $ref: '#/components/schemas/OpportunityHistoryValuationResponse'
+      required:
+      - id
+      - listing_id
+      - material_version
+      - state
+      - score
+      - published_at
+      - state_changed_at
+      - created_at
+      - valuation
+      title: OpportunityHistoryItemResponse
+      type: object
+    OpportunityHistoryValuationResponse:
+      properties:
+        confidence:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Confidence
+        cost_assumptions_version:
+          title: Cost Assumptions Version
+          type: string
+        exit_price_currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Exit Price Currency
+        expected_exit_price:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Expected Exit Price
+        expected_net_profit:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Expected Net Profit
+        id:
+          title: Id
+          type: string
+        model_version:
+          title: Model Version
+          type: string
+        roi:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Roi
+      required:
+      - id
+      - model_version
+      - cost_assumptions_version
+      - expected_exit_price
+      - exit_price_currency
+      - expected_net_profit
+      - roi
+      - confidence
+      title: OpportunityHistoryValuationResponse
+      type: object
+    OpportunityListingResponse:
+      properties:
+        brand_name:
+          title: Brand Name
+          type: string
+        condition:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Condition
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        external_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: External Url
+        fx_date:
+          format: date
+          title: Fx Date
+          type: string
+        fx_rate:
+          title: Fx Rate
+          type: string
+        fx_source:
+          title: Fx Source
+          type: string
+        generation:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Generation
+        id:
+          title: Id
+          type: string
+        listed_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Listed At
+        listing_price:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Listing Price
+        listing_price_currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Listing Price Currency
+        match_confidence:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Match Confidence
+        match_features:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Match Features
+        match_method:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Match Method
+        model_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model Name
+        normalized_currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Normalized Currency
+        normalized_price:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Normalized Price
+        parsed_attributes:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Parsed Attributes
+        ref_code:
+          title: Ref Code
+          type: string
+        reference_attributes:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Reference Attributes
+        reference_id:
+          title: Reference Id
+          type: string
+        seller_geography:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Seller Geography
+        set_status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Set Status
+        source_display_name:
+          title: Source Display Name
+          type: string
+        source_key:
+          title: Source Key
+          type: string
+        title:
+          title: Title
           type: string
       required:
-      - trace_id
-      title: OrganizationListMeta
+      - id
+      - title
+      - description
+      - external_url
+      - listing_price
+      - listing_price_currency
+      - normalized_price
+      - normalized_currency
+      - condition
+      - set_status
+      - seller_geography
+      - listed_at
+      - reference_id
+      - brand_name
+      - ref_code
+      - model_name
+      - generation
+      - reference_attributes
+      - parsed_attributes
+      - source_key
+      - source_display_name
+      - match_confidence
+      - match_method
+      - match_features
+      - fx_rate
+      - fx_source
+      - fx_date
+      title: OpportunityListingResponse
       type: object
-    OrganizationListResponse:
+    OpportunityValuationResponse:
       properties:
-        data:
-          items:
-            $ref: '#/components/schemas/UserOrganizationResponse'
-          title: Data
-          type: array
-        meta:
-          $ref: '#/components/schemas/OrganizationListMeta'
-      required:
-      - data
-      - meta
-      title: OrganizationListResponse
-      type: object
-    StripeWebhookResponse:
-      properties:
-        event_id:
-          title: Event Id
+        adjustment_details:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Adjustment Details
+        all_in_acquisition:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: All In Acquisition
+        comparable_count:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Comparable Count
+        confidence:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Confidence
+        config_version:
+          title: Config Version
           type: string
-        received:
-          title: Received
-          type: boolean
-        replayed:
-          title: Replayed
-          type: boolean
+        cost_assumptions_version:
+          title: Cost Assumptions Version
+          type: string
+        cost_breakdown:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Cost Breakdown
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        exit_price_currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Exit Price Currency
+        expected_exit_price:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Expected Exit Price
+        expected_net_profit:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Expected Net Profit
+        expected_net_resale:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Expected Net Resale
+        high_estimate:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: High Estimate
+        id:
+          title: Id
+          type: string
+        listing_id:
+          title: Listing Id
+          type: string
+        low_estimate:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Low Estimate
+        model_version:
+          title: Model Version
+          type: string
+        risk_reserve_details:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Risk Reserve Details
+        roi:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Roi
+        sample_dispersion:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sample Dispersion
       required:
-      - received
-      - event_id
-      - replayed
-      title: StripeWebhookResponse
+      - id
+      - listing_id
+      - model_version
+      - config_version
+      - cost_assumptions_version
+      - expected_exit_price
+      - exit_price_currency
+      - all_in_acquisition
+      - expected_net_resale
+      - expected_net_profit
+      - roi
+      - low_estimate
+      - high_estimate
+      - confidence
+      - comparable_count
+      - sample_dispersion
+      - cost_breakdown
+      - adjustment_details
+      - risk_reserve_details
+      - created_at
+      title: OpportunityValuationResponse
       type: object
-    UserOrganizationResponse:
+    OrganizationCreateRequest:
+      properties:
+        name:
+          maxLength: 200
+          minLength: 1
+          title: Name
+          type: string
+        slug:
+          maxLength: 100
+          minLength: 1
+          pattern: ^[a-z0-9]+(?:-[a-z0-9]+)*$
+          title: Slug
+          type: string
+      required:
+      - name
+      - slug
+      title: OrganizationCreateRequest
+      type: object
+    OrganizationMemberResponse:
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        display_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Display Name
+        email:
+          title: Email
+          type: string
+        id:
+          title: Id
+          type: string
+        invited_by:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Invited By
+        organization_id:
+          title: Organization Id
+          type: string
+        role:
+          title: Role
+          type: string
+        user_id:
+          title: User Id
+          type: string
+      required:
+      - id
+      - organization_id
+      - user_id
+      - role
+      - created_at
+      - email
+      title: OrganizationMemberResponse
+      type: object
+    OrganizationMembershipResponse:
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        id:
+          title: Id
+          type: string
+        invited_by:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Invited By
+        organization:
+          $ref: '#/components/schemas/OrganizationResponse'
+        organization_id:
+          title: Organization Id
+          type: string
+        role:
+          title: Role
+          type: string
+        user_id:
+          title: User Id
+          type: string
+      required:
+      - id
+      - organization_id
+      - user_id
+      - role
+      - created_at
+      - organization
+      title: OrganizationMembershipResponse
+      type: object
+    OrganizationPatchRequest:
+      properties:
+        name:
+          anyOf:
+          - maxLength: 200
+            minLength: 1
+            type: string
+          - type: 'null'
+          title: Name
+        settings:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Settings
+      title: OrganizationPatchRequest
+      type: object
+    OrganizationResponse:
       properties:
         created_at:
           format: date-time
@@ -305,18 +1725,1011 @@ components:
           title: Name
           type: string
         role:
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Role
-          type: string
+        settings:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Settings
         slug:
           title: Slug
           type: string
+        updated_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Updated At
       required:
       - id
       - name
       - slug
-      - role
       - created_at
-      title: UserOrganizationResponse
+      title: OrganizationResponse
+      type: object
+    OrganizationSettingsPatchRequest:
+      additionalProperties: false
+      properties:
+        currency:
+          anyOf:
+          - pattern: ^[A-Z]{3}$
+            type: string
+          - type: 'null'
+          title: Currency
+        default_fees:
+          anyOf:
+          - $ref: '#/components/schemas/FeeDefaults-Input'
+          - type: 'null'
+        timezone:
+          anyOf:
+          - maxLength: 64
+            minLength: 1
+            type: string
+          - type: 'null'
+          title: Timezone
+      title: OrganizationSettingsPatchRequest
+      type: object
+    OrganizationSettingsResponse:
+      properties:
+        currency:
+          title: Currency
+          type: string
+        default_fees:
+          $ref: '#/components/schemas/FeeDefaults-Output'
+        timezone:
+          title: Timezone
+          type: string
+      required:
+      - currency
+      - timezone
+      - default_fees
+      title: OrganizationSettingsResponse
+      type: object
+    PayPalCheckoutRequest:
+      additionalProperties: false
+      properties:
+        plan_id:
+          maxLength: 64
+          minLength: 1
+          pattern: ^[a-zA-Z0-9_-]+$
+          title: Plan Id
+          type: string
+      required:
+      - plan_id
+      title: PayPalCheckoutRequest
+      type: object
+    PayPalSubscriptionApprovalResponse:
+      properties:
+        subscription_id:
+          title: Subscription Id
+          type: string
+        url:
+          title: Url
+          type: string
+      required:
+      - subscription_id
+      - url
+      title: PayPalSubscriptionApprovalResponse
+      type: object
+    PayPalWebhookResponse:
+      properties:
+        duplicate:
+          default: false
+          title: Duplicate
+          type: boolean
+        received:
+          const: true
+          default: true
+          title: Received
+          type: boolean
+      title: PayPalWebhookResponse
+      type: object
+    PushDeviceCreateRequest:
+      additionalProperties: false
+      properties:
+        device_token:
+          maxLength: 4096
+          minLength: 20
+          title: Device Token
+          type: string
+        platform:
+          enum:
+          - ios
+          - android
+          title: Platform
+          type: string
+      required:
+      - platform
+      - device_token
+      title: PushDeviceCreateRequest
+      type: object
+    PushDeviceResponse:
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        id:
+          title: Id
+          type: string
+        platform:
+          enum:
+          - ios
+          - android
+          title: Platform
+          type: string
+        updated_at:
+          format: date-time
+          title: Updated At
+          type: string
+      required:
+      - id
+      - platform
+      - created_at
+      - updated_at
+      title: PushDeviceResponse
+      type: object
+    ReferenceDetailResponse:
+      properties:
+        aliases:
+          items:
+            type: string
+          title: Aliases
+          type: array
+        attributes:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Attributes
+        brand_id:
+          title: Brand Id
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        generation:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Generation
+        id:
+          title: Id
+          type: string
+        is_active:
+          title: Is Active
+          type: boolean
+        model_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model Name
+        ref_code:
+          title: Ref Code
+          type: string
+      required:
+      - id
+      - brand_id
+      - ref_code
+      - is_active
+      - created_at
+      title: ReferenceDetailResponse
+      type: object
+    ReferenceResponse:
+      properties:
+        brand_id:
+          title: Brand Id
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        generation:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Generation
+        id:
+          title: Id
+          type: string
+        is_active:
+          title: Is Active
+          type: boolean
+        model_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model Name
+        ref_code:
+          title: Ref Code
+          type: string
+      required:
+      - id
+      - brand_id
+      - ref_code
+      - is_active
+      - created_at
+      title: ReferenceResponse
+      type: object
+    ResponseMeta:
+      properties:
+        has_more:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Has More
+        next_cursor:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Cursor
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      title: ResponseMeta
+      type: object
+    SourceAdminResponse:
+      properties:
+        access_mode:
+          title: Access Mode
+          type: string
+        adapter_version:
+          title: Adapter Version
+          type: string
+        display_name:
+          title: Display Name
+          type: string
+        health_status:
+          const: unknown
+          title: Health Status
+          type: string
+        id:
+          title: Id
+          type: string
+        is_enabled:
+          title: Is Enabled
+          type: boolean
+        last_fetched_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Last Fetched At
+        source_key:
+          title: Source Key
+          type: string
+      required:
+      - id
+      - source_key
+      - display_name
+      - adapter_version
+      - access_mode
+      - is_enabled
+      - health_status
+      - last_fetched_at
+      title: SourceAdminResponse
+      type: object
+    SourcePatchRequest:
+      additionalProperties: false
+      properties:
+        is_enabled:
+          title: Is Enabled
+          type: boolean
+      required:
+      - is_enabled
+      title: SourcePatchRequest
+      type: object
+    SubscriptionResponse:
+      properties:
+        current_period_end:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Current Period End
+        current_period_start:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Current Period Start
+        id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id
+        plan_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Plan Id
+        status:
+          $ref: '#/components/schemas/SubscriptionStatus'
+        trial_end:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Trial End
+      required:
+      - id
+      - status
+      - plan_id
+      - current_period_start
+      - current_period_end
+      - trial_end
+      title: SubscriptionResponse
+      type: object
+    SubscriptionStatus:
+      enum:
+      - trialing
+      - active
+      - past_due
+      - canceled
+      - unpaid
+      type: string
+    SuccessEnvelope_AlertRuleResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/AlertRuleResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[AlertRuleResponse]
+      type: object
+    SuccessEnvelope_AlertTestAcceptedResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/AlertTestAcceptedResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[AlertTestAcceptedResponse]
+      type: object
+    SuccessEnvelope_Channel3SearchResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/Channel3SearchResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[Channel3SearchResponse]
+      type: object
+    SuccessEnvelope_CurrentUserResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/CurrentUserResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[CurrentUserResponse]
+      type: object
+    SuccessEnvelope_FeatureFlagResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/FeatureFlagResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[FeatureFlagResponse]
+      type: object
+    SuccessEnvelope_FeedbackCreateResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/FeedbackCreateResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[FeedbackCreateResponse]
+      type: object
+    SuccessEnvelope_IntegrationStatusResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/IntegrationStatusResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[IntegrationStatusResponse]
+      type: object
+    SuccessEnvelope_OpportunityDetailResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/OpportunityDetailResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[OpportunityDetailResponse]
+      type: object
+    SuccessEnvelope_OrganizationResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/OrganizationResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[OrganizationResponse]
+      type: object
+    SuccessEnvelope_OrganizationSettingsResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/OrganizationSettingsResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[OrganizationSettingsResponse]
+      type: object
+    SuccessEnvelope_PayPalSubscriptionApprovalResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/PayPalSubscriptionApprovalResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[PayPalSubscriptionApprovalResponse]
+      type: object
+    SuccessEnvelope_PushDeviceResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/PushDeviceResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[PushDeviceResponse]
+      type: object
+    SuccessEnvelope_ReferenceDetailResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/ReferenceDetailResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[ReferenceDetailResponse]
+      type: object
+    SuccessEnvelope_SourceAdminResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/SourceAdminResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[SourceAdminResponse]
+      type: object
+    SuccessEnvelope_SubscriptionResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/SubscriptionResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[SubscriptionResponse]
+      type: object
+    SuccessEnvelope_TelegramLinkResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/TelegramLinkResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[TelegramLinkResponse]
+      type: object
+    SuccessEnvelope_TradeOutcomeResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/TradeOutcomeResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[TradeOutcomeResponse]
+      type: object
+    SuccessEnvelope_UnmatchedListingResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/UnmatchedListingResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[UnmatchedListingResponse]
+      type: object
+    SuccessEnvelope_WatchListResponse_:
+      properties:
+        data:
+          $ref: '#/components/schemas/WatchListResponse'
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[WatchListResponse]
+      type: object
+    SuccessEnvelope_list_ActivityItemResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/ActivityItemResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[ActivityItemResponse]]
+      type: object
+    SuccessEnvelope_list_AlertDeliveryResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/AlertDeliveryResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[AlertDeliveryResponse]]
+      type: object
+    SuccessEnvelope_list_AlertRuleResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/AlertRuleResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[AlertRuleResponse]]
+      type: object
+    SuccessEnvelope_list_AuditEventResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/AuditEventResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[AuditEventResponse]]
+      type: object
+    SuccessEnvelope_list_BrandResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/BrandResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[BrandResponse]]
+      type: object
+    SuccessEnvelope_list_DuplicateGroupResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/DuplicateGroupResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[DuplicateGroupResponse]]
+      type: object
+    SuccessEnvelope_list_FeatureFlagResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/FeatureFlagResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[FeatureFlagResponse]]
+      type: object
+    SuccessEnvelope_list_OpportunityFeedItem__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/OpportunityFeedItem'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[OpportunityFeedItem]]
+      type: object
+    SuccessEnvelope_list_OpportunityHistoryItemResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/OpportunityHistoryItemResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[OpportunityHistoryItemResponse]]
+      type: object
+    SuccessEnvelope_list_OrganizationMemberResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/OrganizationMemberResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[OrganizationMemberResponse]]
+      type: object
+    SuccessEnvelope_list_OrganizationResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/OrganizationResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[OrganizationResponse]]
+      type: object
+    SuccessEnvelope_list_ReferenceResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/ReferenceResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[ReferenceResponse]]
+      type: object
+    SuccessEnvelope_list_SourceAdminResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/SourceAdminResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[SourceAdminResponse]]
+      type: object
+    SuccessEnvelope_list_TradeOutcomeResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/TradeOutcomeResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[TradeOutcomeResponse]]
+      type: object
+    SuccessEnvelope_list_UnmatchedListingResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/UnmatchedListingResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[UnmatchedListingResponse]]
+      type: object
+    SuccessEnvelope_list_WatchListResponse__:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/WatchListResponse'
+          title: Data
+          type: array
+        meta:
+          $ref: '#/components/schemas/ResponseMeta'
+      required:
+      - data
+      - meta
+      title: SuccessEnvelope[list[WatchListResponse]]
+      type: object
+    TelegramLinkResponse:
+      properties:
+        expires_at:
+          format: date-time
+          title: Expires At
+          type: string
+        link_url:
+          title: Link Url
+          type: string
+      required:
+      - link_url
+      - expires_at
+      title: TelegramLinkResponse
+      type: object
+    TradeOutcomeCreateRequest:
+      additionalProperties: false
+      properties:
+        acquisition_currency:
+          anyOf:
+          - pattern: ^[A-Z]{3}$
+            type: string
+          - type: 'null'
+          title: Acquisition Currency
+        acquisition_price:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Acquisition Price
+        actual_profit:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            max_digits: 18
+          - type: 'null'
+          description: Dealer-reported profit denominated in acquisition_currency.
+          title: Actual Profit
+        days_to_sell:
+          anyOf:
+          - maximum: 36500.0
+            minimum: 0.0
+            type: integer
+          - type: 'null'
+          title: Days To Sell
+        resale_currency:
+          anyOf:
+          - pattern: ^[A-Z]{3}$
+            type: string
+          - type: 'null'
+          title: Resale Currency
+        resale_price:
+          anyOf:
+          - anyOf:
+            - type: number
+            - type: string
+            decimal_places: 2
+            ge: 0
+            max_digits: 18
+          - type: 'null'
+          title: Resale Price
+      title: TradeOutcomeCreateRequest
+      type: object
+    TradeOutcomeResponse:
+      properties:
+        acquisition_currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Acquisition Currency
+        acquisition_price:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Acquisition Price
+        actual_profit:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Actual Profit
+        actual_profit_currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Actual Profit Currency
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        days_to_sell:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Days To Sell
+        id:
+          title: Id
+          type: string
+        opportunity_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Opportunity Id
+        organization_id:
+          title: Organization Id
+          type: string
+        reference_id:
+          title: Reference Id
+          type: string
+        resale_currency:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resale Currency
+        resale_price:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resale Price
+        user_id:
+          title: User Id
+          type: string
+      required:
+      - id
+      - organization_id
+      - user_id
+      - opportunity_id
+      - reference_id
+      - acquisition_price
+      - acquisition_currency
+      - resale_price
+      - resale_currency
+      - actual_profit
+      - actual_profit_currency
+      - days_to_sell
+      - created_at
+      title: TradeOutcomeResponse
+      type: object
+    UnmatchedListingResponse:
+      properties:
+        external_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: External Url
+        id:
+          title: Id
+          type: string
+        match_method:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Match Method
+        observation_at:
+          format: date-time
+          title: Observation At
+          type: string
+        reference_id:
+          title: Reference Id
+          type: string
+        source_key:
+          title: Source Key
+          type: string
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+      required:
+      - id
+      - reference_id
+      - source_key
+      - title
+      - external_url
+      - match_method
+      - observation_at
+      title: UnmatchedListingResponse
+      type: object
+    UnmatchedResolveRequest:
+      additionalProperties: false
+      properties:
+        reference_id:
+          maxLength: 128
+          minLength: 1
+          title: Reference Id
+          type: string
+      required:
+      - reference_id
+      title: UnmatchedResolveRequest
+      type: object
+    UserResponse:
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        display_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Display Name
+        email:
+          title: Email
+          type: string
+        id:
+          title: Id
+          type: string
+        updated_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Updated At
+      required:
+      - id
+      - email
+      - created_at
+      title: UserResponse
       type: object
     ValidationError:
       properties:
@@ -344,6 +2757,89 @@ components:
       - type
       title: ValidationError
       type: object
+    WatchListCreateRequest:
+      properties:
+        name:
+          maxLength: 200
+          minLength: 1
+          title: Name
+          type: string
+        reference_ids:
+          items:
+            type: string
+          maxItems: 500
+          title: Reference Ids
+          type: array
+      required:
+      - name
+      title: WatchListCreateRequest
+      type: object
+    WatchListEntryResponse:
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        id:
+          title: Id
+          type: string
+        reference_id:
+          title: Reference Id
+          type: string
+        watch_list_id:
+          title: Watch List Id
+          type: string
+      required:
+      - id
+      - watch_list_id
+      - reference_id
+      - created_at
+      title: WatchListEntryResponse
+      type: object
+    WatchListResponse:
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        entries:
+          items:
+            $ref: '#/components/schemas/WatchListEntryResponse'
+          title: Entries
+          type: array
+        id:
+          title: Id
+          type: string
+        name:
+          title: Name
+          type: string
+        organization_id:
+          title: Organization Id
+          type: string
+      required:
+      - id
+      - organization_id
+      - name
+      - created_at
+      title: WatchListResponse
+      type: object
+    WatchListUpdateRequest:
+      properties:
+        name:
+          maxLength: 200
+          minLength: 1
+          title: Name
+          type: string
+        reference_ids:
+          items:
+            type: string
+          maxItems: 500
+          title: Reference Ids
+          type: array
+      required:
+      - name
+      title: WatchListUpdateRequest
+      type: object
   securitySchemes:
     HTTPBearer:
       scheme: bearer
@@ -353,26 +2849,34 @@ info:
   version: 0.1.0
 openapi: 3.1.0
 paths:
-  /api/v1/alerts/rules:
+  /api/v1/activity:
     get:
-      description: Lists alert rules belonging to the authenticated organization.
-      operationId: list_alert_rules_api_v1_alerts_rules_get
+      operationId: list_activity_api_v1_activity_get
       parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 50
+          maximum: 100
+          minimum: 1
+          title: Limit
+          type: integer
       - in: header
         name: X-Organization-ID
-        required: true
+        required: false
         schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
           title: X-Organization-Id
-          type: string
       responses:
         '200':
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/AlertRuleResponse'
-                title: Response List Alert Rules Api V1 Alerts Rules Get
-                type: array
+                $ref: '#/components/schemas/SuccessEnvelope_list_ActivityItemResponse__'
           description: Successful Response
         '422':
           content:
@@ -382,176 +2886,2119 @@ paths:
           description: Validation Error
       security:
       - HTTPBearer: []
-      summary: List alert rules
+      summary: List Activity
       tags:
-      - alerts
-    post:
-      description: Creates a tenant-scoped alert rule.
-      operationId: create_alert_rule_api_v1_alerts_rules_post
-      parameters:
-      - in: header
-        name: X-Organization-ID
-        required: true
-        schema:
-          title: X-Organization-Id
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AlertRuleRequest'
-        required: true
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AlertRuleResponse'
-          description: Successful Response
-        '401':
-          description: Authentication or organization membership is required.
-        '403':
-          description: The organization role cannot create rules.
-        '422':
-          description: The alert rule payload is invalid.
-      security:
-      - HTTPBearer: []
-      summary: Create an alert rule
-      tags:
-      - alerts
-  /api/v1/billing/stripe/webhook:
-    post:
-      description: Verifies and processes an idempotent Stripe event.
-      operationId: stripe_webhook_api_v1_billing_stripe_webhook_post
-      parameters:
-      - in: header
-        name: Stripe-Signature
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Stripe-Signature
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StripeWebhookResponse'
-          description: Successful Response
-        '401':
-          description: The Stripe signature is missing or invalid.
-        '409':
-          description: The Stripe event conflicts with existing state.
-        '422':
-          description: The webhook payload is invalid.
-      summary: Receive Stripe webhook
-      tags:
-      - billing
-  /api/v1/feedback:
-    post:
-      description: Creates dealer feedback once per organization and idempotency key.
-      operationId: create_feedback_api_v1_feedback_post
-      parameters:
-      - in: header
-        name: X-Organization-ID
-        required: true
-        schema:
-          title: X-Organization-Id
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/FeedbackRequest'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FeedbackResponse'
-          description: Successful Response
-        '401':
-          description: Authentication or organization membership is required.
-        '409':
-          description: The idempotency key conflicts with existing feedback.
-        '422':
-          description: The feedback payload is invalid.
-      security:
-      - HTTPBearer: []
-      summary: Record opportunity feedback
-      tags:
-      - feedback
-  /api/v1/identity/organizations:
+      - activity
+  /api/v1/activity/outcomes:
     get:
-      description: Returns only organizations where the authenticated user has membership.
-      operationId: list_organizations_api_v1_identity_organizations_get
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrganizationListResponse'
-          description: Successful Response
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Authentication is required.
-        '422':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: The request is invalid.
-      security:
-      - HTTPBearer: []
-      summary: List current user's organizations
-      tags:
-      - identity
-  /api/v1/opportunities:
-    get:
-      description: Returns the authenticated organization's published opportunity feed.
-      operationId: list_opportunities_api_v1_opportunities_get
+      operationId: list_trade_outcomes_api_v1_activity_outcomes_get
       parameters:
       - in: query
         name: limit
         required: false
         schema:
           default: 50
+          maximum: 100
+          minimum: 1
           title: Limit
           type: integer
-      - in: query
-        name: cursor
+      - in: header
+        name: X-Organization-ID
         required: false
         schema:
           anyOf:
-          - type: string
+          - maxLength: 128
+            type: string
           - type: 'null'
-          title: Cursor
-      - in: header
-        name: X-Organization-ID
-        required: true
-        schema:
           title: X-Organization-Id
-          type: string
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OpportunityListResponse'
+                $ref: '#/components/schemas/SuccessEnvelope_list_TradeOutcomeResponse__'
           description: Successful Response
-        '401':
-          description: Authentication or tenant membership is required.
-        '403':
-          description: The organization role cannot access this resource.
         '422':
-          description: The request is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
       security:
       - HTTPBearer: []
-      summary: List tenant opportunities
+      summary: List Trade Outcomes
+      tags:
+      - activity
+  /api/v1/admin/audit:
+    get:
+      operationId: list_audit_events_api_v1_admin_audit_get
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 50
+          maximum: 100
+          minimum: 1
+          title: Limit
+          type: integer
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_list_AuditEventResponse__'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: List Audit Events
+      tags:
+      - admin
+  /api/v1/admin/dlq:
+    get:
+      operationId: list_dead_letters_api_v1_admin_dlq_get
+      parameters:
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: List Dead Letters
+      tags:
+      - admin
+  /api/v1/admin/dlq/{message_id}:
+    delete:
+      operationId: discard_dead_letter_api_v1_admin_dlq__message_id__delete
+      parameters:
+      - in: path
+        name: message_id
+        required: true
+        schema:
+          title: Message Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Discard Dead Letter
+      tags:
+      - admin
+  /api/v1/admin/dlq/{message_id}/replay:
+    post:
+      operationId: replay_dead_letter_api_v1_admin_dlq__message_id__replay_post
+      parameters:
+      - in: path
+        name: message_id
+        required: true
+        schema:
+          title: Message Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Replay Dead Letter
+      tags:
+      - admin
+  /api/v1/admin/duplicates:
+    get:
+      operationId: list_duplicate_groups_api_v1_admin_duplicates_get
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 50
+          maximum: 100
+          minimum: 1
+          title: Limit
+          type: integer
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_list_DuplicateGroupResponse__'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: List Duplicate Groups
+      tags:
+      - admin
+  /api/v1/admin/flags:
+    get:
+      operationId: list_feature_flags_api_v1_admin_flags_get
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 50
+          maximum: 100
+          minimum: 1
+          title: Limit
+          type: integer
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_list_FeatureFlagResponse__'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: List Feature Flags
+      tags:
+      - admin
+  /api/v1/admin/flags/{flag_id}:
+    patch:
+      operationId: update_feature_flag_api_v1_admin_flags__flag_id__patch
+      parameters:
+      - in: path
+        name: flag_id
+        required: true
+        schema:
+          title: Flag Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeatureFlagPatchRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_FeatureFlagResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Update Feature Flag
+      tags:
+      - admin
+  /api/v1/admin/jobs:
+    get:
+      operationId: list_jobs_api_v1_admin_jobs_get
+      parameters:
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: List Jobs
+      tags:
+      - admin
+  /api/v1/admin/jobs/{job_id}/replay:
+    post:
+      operationId: replay_job_api_v1_admin_jobs__job_id__replay_post
+      parameters:
+      - in: path
+        name: job_id
+        required: true
+        schema:
+          title: Job Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Replay Job
+      tags:
+      - admin
+  /api/v1/admin/sources:
+    get:
+      operationId: list_sources_api_v1_admin_sources_get
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 50
+          maximum: 100
+          minimum: 1
+          title: Limit
+          type: integer
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_list_SourceAdminResponse__'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: List Sources
+      tags:
+      - admin
+  /api/v1/admin/sources/{source_id}:
+    patch:
+      operationId: update_source_api_v1_admin_sources__source_id__patch
+      parameters:
+      - in: path
+        name: source_id
+        required: true
+        schema:
+          title: Source Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourcePatchRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_SourceAdminResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Update Source
+      tags:
+      - admin
+  /api/v1/admin/unmatched:
+    get:
+      operationId: list_unmatched_listings_api_v1_admin_unmatched_get
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 50
+          maximum: 100
+          minimum: 1
+          title: Limit
+          type: integer
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_list_UnmatchedListingResponse__'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: List Unmatched Listings
+      tags:
+      - admin
+  /api/v1/admin/unmatched/{listing_id}/resolve:
+    post:
+      operationId: resolve_unmatched_listing_api_v1_admin_unmatched__listing_id__resolve_post
+      parameters:
+      - in: path
+        name: listing_id
+        required: true
+        schema:
+          title: Listing Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnmatchedResolveRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_UnmatchedListingResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Resolve Unmatched Listing
+      tags:
+      - admin
+  /api/v1/alerts/deliveries:
+    get:
+      operationId: list_alert_deliveries_api_v1_alerts_deliveries_get
+      parameters:
+      - in: query
+        name: rule_id
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: Rule Id
+      - in: query
+        name: delivery_status
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - pending
+            - sent
+            - failed
+            - suppressed
+            type: string
+          - type: 'null'
+          title: Delivery Status
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 50
+          maximum: 100
+          minimum: 1
+          title: Limit
+          type: integer
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_list_AlertDeliveryResponse__'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: List Alert Deliveries
+      tags:
+      - alerts
+  /api/v1/alerts/rules:
+    get:
+      operationId: list_alert_rules_api_v1_alerts_rules_get
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 50
+          maximum: 100
+          minimum: 1
+          title: Limit
+          type: integer
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_list_AlertRuleResponse__'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: List Alert Rules
+      tags:
+      - alerts
+    post:
+      operationId: create_alert_rule_api_v1_alerts_rules_post
+      parameters:
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertRuleCreateRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_AlertRuleResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Create Alert Rule
+      tags:
+      - alerts
+  /api/v1/alerts/rules/{rule_id}:
+    delete:
+      operationId: delete_alert_rule_api_v1_alerts_rules__rule_id__delete
+      parameters:
+      - in: path
+        name: rule_id
+        required: true
+        schema:
+          title: Rule Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Delete Alert Rule
+      tags:
+      - alerts
+    get:
+      operationId: get_alert_rule_api_v1_alerts_rules__rule_id__get
+      parameters:
+      - in: path
+        name: rule_id
+        required: true
+        schema:
+          title: Rule Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_AlertRuleResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Get Alert Rule
+      tags:
+      - alerts
+    put:
+      operationId: update_alert_rule_api_v1_alerts_rules__rule_id__put
+      parameters:
+      - in: path
+        name: rule_id
+        required: true
+        schema:
+          title: Rule Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlertRuleCreateRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_AlertRuleResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Update Alert Rule
+      tags:
+      - alerts
+  /api/v1/alerts/rules/{rule_id}/test:
+    post:
+      operationId: request_alert_test_api_v1_alerts_rules__rule_id__test_post
+      parameters:
+      - in: path
+        name: rule_id
+        required: true
+        schema:
+          title: Rule Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      - in: header
+        name: Idempotency-Key
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Idempotency-Key
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_AlertTestAcceptedResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Request Alert Test
+      tags:
+      - alerts
+  /api/v1/billing/cancel:
+    post:
+      operationId: cancel_subscription_api_v1_billing_cancel_post
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          maxLength: 255
+          minLength: 1
+          title: Idempotency-Key
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_SubscriptionResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Cancel Subscription
+      tags:
+      - billing
+  /api/v1/billing/checkout:
+    post:
+      operationId: create_checkout_session_api_v1_billing_checkout_post
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          maxLength: 255
+          minLength: 1
+          title: Idempotency-Key
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayPalCheckoutRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_PayPalSubscriptionApprovalResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Create Checkout Session
+      tags:
+      - billing
+  /api/v1/billing/stripe/webhook:
+    post:
+      deprecated: true
+      operationId: paypal_webhook_legacy_api_v1_billing_stripe_webhook_post
+      parameters:
+      - in: header
+        name: PayPal-Auth-Algo
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: Paypal-Auth-Algo
+      - in: header
+        name: PayPal-Cert-Url
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 2048
+            type: string
+          - type: 'null'
+          title: Paypal-Cert-Url
+      - in: header
+        name: PayPal-Transmission-Id
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 256
+            type: string
+          - type: 'null'
+          title: Paypal-Transmission-Id
+      - in: header
+        name: PayPal-Transmission-Sig
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 2048
+            type: string
+          - type: 'null'
+          title: Paypal-Transmission-Sig
+      - in: header
+        name: PayPal-Transmission-Time
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: Paypal-Transmission-Time
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayPalWebhookResponse'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Paypal Webhook Legacy
+      tags:
+      - billing
+  /api/v1/billing/subscription:
+    get:
+      operationId: get_subscription_api_v1_billing_subscription_get
+      parameters:
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_SubscriptionResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Get Subscription
+      tags:
+      - billing
+  /api/v1/billing/webhook:
+    post:
+      operationId: paypal_webhook_api_v1_billing_webhook_post
+      parameters:
+      - in: header
+        name: PayPal-Auth-Algo
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: Paypal-Auth-Algo
+      - in: header
+        name: PayPal-Cert-Url
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 2048
+            type: string
+          - type: 'null'
+          title: Paypal-Cert-Url
+      - in: header
+        name: PayPal-Transmission-Id
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 256
+            type: string
+          - type: 'null'
+          title: Paypal-Transmission-Id
+      - in: header
+        name: PayPal-Transmission-Sig
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 2048
+            type: string
+          - type: 'null'
+          title: Paypal-Transmission-Sig
+      - in: header
+        name: PayPal-Transmission-Time
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: Paypal-Transmission-Time
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayPalWebhookResponse'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      summary: Paypal Webhook
+      tags:
+      - billing
+  /api/v1/catalog/brands:
+    get:
+      operationId: list_brands_api_v1_catalog_brands_get
+      parameters:
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_list_BrandResponse__'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: List Brands
+      tags:
+      - catalog
+  /api/v1/catalog/channel3/search:
+    post:
+      operationId: search_channel3_watches_api_v1_catalog_channel3_search_post
+      parameters:
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Channel3SearchRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_Channel3SearchResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Search Channel3 Watches
+      tags:
+      - catalog
+  /api/v1/catalog/references:
+    get:
+      operationId: list_references_api_v1_catalog_references_get
+      parameters:
+      - in: query
+        name: q
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            minLength: 1
+            type: string
+          - type: 'null'
+          title: Q
+      - in: query
+        name: brand_id
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: Brand Id
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 2048
+            type: string
+          - type: 'null'
+          title: Cursor
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 25
+          maximum: 100
+          minimum: 1
+          title: Limit
+          type: integer
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_list_ReferenceResponse__'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: List References
+      tags:
+      - catalog
+  /api/v1/catalog/references/{reference_id}:
+    get:
+      operationId: get_reference_api_v1_catalog_references__reference_id__get
+      parameters:
+      - in: path
+        name: reference_id
+        required: true
+        schema:
+          title: Reference Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_ReferenceDetailResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Get Reference
+      tags:
+      - catalog
+  /api/v1/catalog/watch-lists:
+    get:
+      operationId: list_watch_lists_api_v1_catalog_watch_lists_get
+      parameters:
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_list_WatchListResponse__'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: List Watch Lists
+      tags:
+      - catalog
+    post:
+      operationId: create_watch_list_api_v1_catalog_watch_lists_post
+      parameters:
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchListCreateRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_WatchListResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Create Watch List
+      tags:
+      - catalog
+  /api/v1/catalog/watch-lists/{watch_list_id}:
+    delete:
+      operationId: delete_watch_list_api_v1_catalog_watch_lists__watch_list_id__delete
+      parameters:
+      - in: path
+        name: watch_list_id
+        required: true
+        schema:
+          title: Watch List Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Delete Watch List
+      tags:
+      - catalog
+    put:
+      operationId: update_watch_list_api_v1_catalog_watch_lists__watch_list_id__put
+      parameters:
+      - in: path
+        name: watch_list_id
+        required: true
+        schema:
+          title: Watch List Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchListUpdateRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_WatchListResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Update Watch List
+      tags:
+      - catalog
+  /api/v1/identity/me:
+    get:
+      operationId: get_me_api_v1_identity_me_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_CurrentUserResponse_'
+          description: Successful Response
+      security:
+      - HTTPBearer: []
+      summary: Get Me
+      tags:
+      - identity
+  /api/v1/identity/organizations:
+    get:
+      operationId: list_organizations_api_v1_identity_organizations_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_list_OrganizationResponse__'
+          description: Successful Response
+      security:
+      - HTTPBearer: []
+      summary: List Organizations
+      tags:
+      - identity
+    post:
+      operationId: create_organization_api_v1_identity_organizations_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationCreateRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_OrganizationResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Create Organization
+      tags:
+      - identity
+  /api/v1/identity/organizations/{org_id}:
+    get:
+      operationId: get_organization_api_v1_identity_organizations__org_id__get
+      parameters:
+      - in: path
+        name: org_id
+        required: true
+        schema:
+          title: Org Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_OrganizationResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Get Organization
+      tags:
+      - identity
+    patch:
+      operationId: patch_organization_api_v1_identity_organizations__org_id__patch
+      parameters:
+      - in: path
+        name: org_id
+        required: true
+        schema:
+          title: Org Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationPatchRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_OrganizationResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Patch Organization
+      tags:
+      - identity
+  /api/v1/identity/organizations/{org_id}/members:
+    get:
+      operationId: list_organization_members_api_v1_identity_organizations__org_id__members_get
+      parameters:
+      - in: path
+        name: org_id
+        required: true
+        schema:
+          title: Org Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_list_OrganizationMemberResponse__'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: List Organization Members
+      tags:
+      - identity
+  /api/v1/opportunities:
+    get:
+      operationId: list_opportunities_api_v1_opportunities_get
+      parameters:
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 2048
+            type: string
+          - type: 'null'
+          title: Cursor
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 25
+          maximum: 100
+          minimum: 1
+          title: Limit
+          type: integer
+      - in: query
+        name: sort
+        required: false
+        schema:
+          default: score_desc
+          enum:
+          - newest
+          - score_desc
+          - profit_desc
+          - roi_desc
+          title: Sort
+          type: string
+      - in: query
+        name: state
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - published
+            - dismissed
+            - contacted
+            - purchased
+            - expired
+            type: string
+          - type: 'null'
+          default: published
+          title: State
+      - in: query
+        name: reference_id
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: Reference Id
+      - in: query
+        name: brand_id
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: Brand Id
+      - in: query
+        name: condition
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 64
+            type: string
+          - type: 'null'
+          title: Condition
+      - in: query
+        name: min_roi
+        required: false
+        schema:
+          anyOf:
+          - type: number
+          - type: string
+          - type: 'null'
+          title: Min Roi
+      - in: query
+        name: min_profit
+        required: false
+        schema:
+          anyOf:
+          - type: number
+          - type: string
+          - type: 'null'
+          title: Min Profit
+      - in: query
+        name: min_confidence
+        required: false
+        schema:
+          anyOf:
+          - maximum: 1.0
+            minimum: 0.0
+            type: number
+          - type: string
+          - type: 'null'
+          title: Min Confidence
+      - in: query
+        name: q
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            minLength: 1
+            type: string
+          - type: 'null'
+          title: Q
+      - in: query
+        name: watch_list_id
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: Watch List Id
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_list_OpportunityFeedItem__'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: List Opportunities
       tags:
       - opportunities
+  /api/v1/opportunities/{opportunity_id}:
+    get:
+      operationId: get_opportunity_api_v1_opportunities__opportunity_id__get
+      parameters:
+      - in: path
+        name: opportunity_id
+        required: true
+        schema:
+          title: Opportunity Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_OpportunityDetailResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Get Opportunity
+      tags:
+      - opportunities
+  /api/v1/opportunities/{opportunity_id}/feedback:
+    post:
+      operationId: record_feedback_api_v1_opportunities__opportunity_id__feedback_post
+      parameters:
+      - in: path
+        name: opportunity_id
+        required: true
+        schema:
+          title: Opportunity Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      - in: header
+        name: Idempotency-Key
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Idempotency-Key
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackCreateRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_FeedbackCreateResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Record Feedback
+      tags:
+      - opportunities
+  /api/v1/opportunities/{opportunity_id}/history:
+    get:
+      operationId: get_opportunity_history_api_v1_opportunities__opportunity_id__history_get
+      parameters:
+      - in: path
+        name: opportunity_id
+        required: true
+        schema:
+          title: Opportunity Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_list_OpportunityHistoryItemResponse__'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Get Opportunity History
+      tags:
+      - opportunities
+  /api/v1/opportunities/{opportunity_id}/trade-outcome:
+    post:
+      operationId: record_trade_outcome_api_v1_opportunities__opportunity_id__trade_outcome_post
+      parameters:
+      - in: path
+        name: opportunity_id
+        required: true
+        schema:
+          title: Opportunity Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      - in: header
+        name: Idempotency-Key
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Idempotency-Key
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TradeOutcomeCreateRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_TradeOutcomeResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Record Trade Outcome
+      tags:
+      - opportunities
+  /api/v1/settings/integrations:
+    get:
+      operationId: get_integration_status_api_v1_settings_integrations_get
+      parameters:
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_IntegrationStatusResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Get Integration Status
+      tags:
+      - integrations
+  /api/v1/settings/integrations/push:
+    post:
+      operationId: register_push_device_api_v1_settings_integrations_push_post
+      parameters:
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushDeviceCreateRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_PushDeviceResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Register Push Device
+      tags:
+      - integrations
+  /api/v1/settings/integrations/push/{device_id}:
+    delete:
+      operationId: unregister_push_device_api_v1_settings_integrations_push__device_id__delete
+      parameters:
+      - in: path
+        name: device_id
+        required: true
+        schema:
+          title: Device Id
+          type: string
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Unregister Push Device
+      tags:
+      - integrations
+  /api/v1/settings/integrations/telegram:
+    delete:
+      operationId: unlink_telegram_api_v1_settings_integrations_telegram_delete
+      parameters:
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Unlink Telegram
+      tags:
+      - integrations
+    post:
+      operationId: link_telegram_api_v1_settings_integrations_telegram_post
+      parameters:
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_TelegramLinkResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Link Telegram
+      tags:
+      - integrations
+  /api/v1/settings/organization:
+    get:
+      operationId: get_organization_settings_api_v1_settings_organization_get
+      parameters:
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_OrganizationSettingsResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Get Organization Settings
+      tags:
+      - settings
+    patch:
+      operationId: patch_organization_settings_api_v1_settings_organization_patch
+      parameters:
+      - in: header
+        name: X-Organization-ID
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 128
+            type: string
+          - type: 'null'
+          title: X-Organization-Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationSettingsPatchRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope_OrganizationSettingsResponse_'
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Patch Organization Settings
+      tags:
+      - settings

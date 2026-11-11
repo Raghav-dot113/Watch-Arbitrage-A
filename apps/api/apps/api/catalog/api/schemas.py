@@ -5,6 +5,12 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class Channel3SearchRequest(BaseModel):
+    query: str = Field(min_length=2, max_length=256)
+    limit: int = Field(default=20, ge=1, le=50)
+    page_token: str | None = Field(default=None, min_length=1, max_length=2048)
+
+
 class WatchListCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     reference_ids: list[str] = Field(default_factory=list, max_length=500)
