@@ -4,6 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 import sqlalchemy as sa
+from apps.api.duplicates.infrastructure.models import DuplicateGroup, DuplicateGroupMember
 from apps.api.infrastructure.models import Base, ULIDMixin
 from sqlalchemy import (
     JSON,

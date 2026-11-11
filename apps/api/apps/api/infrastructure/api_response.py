@@ -22,10 +22,11 @@ def success_response(
     data: Any,
     *,
     next_cursor: str | None = None,
-    has_more: bool | None = None,
+    has_more: bool | None = False,
 ) -> dict[str, Any]:
-    meta: dict[str, Any] = {"trace_id": request.state.trace_id}
-    if next_cursor is not None or has_more is not None:
-        meta["next_cursor"] = next_cursor
-        meta["has_more"] = has_more
+    meta: dict[str, Any] = {
+        "trace_id": getattr(request.state, "trace_id", "unknown"),
+        "next_cursor": next_cursor if next_cursor is not None else "",
+        "has_more": bool(has_more),
+    }
     return {"data": data, "meta": meta}

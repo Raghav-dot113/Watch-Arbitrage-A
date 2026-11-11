@@ -20,7 +20,7 @@ class OrganizationPatchRequest(BaseModel):
             raise ValueError("At least one organization field must be provided")
         return self
 
-ErrorResponse = ApiErrorResponse
+ErrorResponse = 'ApiErrorResponse'
 
 
 class OrganizationResponse(BaseModel):
@@ -29,6 +29,7 @@ class OrganizationResponse(BaseModel):
     id: str
     name: str
     slug: str
+    role: str | None = None
     settings: dict[str, object] | None = None
     created_at: datetime
     updated_at: datetime | None = None

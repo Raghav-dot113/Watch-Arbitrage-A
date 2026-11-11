@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     dev_jwt_secret: SecretStr = SecretStr("")
     jwt_issuer: str = "chronoarb-dev"
     jwt_audience: str = "chronoarb-api"
+    cognito_jwks_url: str = ""
+    cognito_issuer: str = ""
+    cognito_audience: str = ""
+    stripe_webhook_secret: str = ""
     auth_token_ttl_seconds: int = 900
     platform_ops_subjects: str = ""
     cors_origins: str = "http://localhost:3000"

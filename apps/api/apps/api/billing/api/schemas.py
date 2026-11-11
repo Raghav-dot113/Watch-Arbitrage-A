@@ -23,6 +23,9 @@ class PayPalWebhookResponse(BaseModel):
     duplicate: bool = False
 
 
+StripeWebhookResponse = PayPalWebhookResponse
+
+
 class SubscriptionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

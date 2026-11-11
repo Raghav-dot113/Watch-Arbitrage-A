@@ -39,9 +39,16 @@ from pydantic import ValidationError as PydanticValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 
+class _TraceIdLoggerFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.trace_id = getattr(record, "trace_id", "unknown")
+        return True
+
+
 logging.basicConfig(
     level=settings.log_level,
-    format="%(asctime)s [%(levelname)s] %(name)s trace_id=%(trace_id)s %(message)s",
+    format="%(asctime)s [%(levelname)s] %(name)s %(message)s",
+    force=True,
 )
 logger = logging.getLogger("chronoarb.api")
 
@@ -87,11 +94,6 @@ def create_app() -> FastAPI:
         response_model=HealthResponse,
         include_in_schema=False,
     )
-    app.include_router(identity_router)
-    app.include_router(opportunities_router)
-    app.include_router(billing_router)
-    app.include_router(feedback_router)
-    app.include_router(alerts_router)
     app.add_api_route(
         "/ready",
         ready_handler,

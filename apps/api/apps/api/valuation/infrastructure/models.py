@@ -4,6 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from apps.api.infrastructure.models import Base, ULIDMixin
+from apps.api.opportunities.infrastructure.models import Opportunity, OpportunityView
 from sqlalchemy import (
     JSON,
     ForeignKey,

@@ -48,7 +48,7 @@ async def create_development_token(
     request: Request,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, object]:
-    if settings.environment not in {"local", "test"} or settings.auth_mode != "dev":
+    if settings.environment not in {"local", "test"} or settings.auth_mode not in {"dev", "test"}:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     normalized_email = payload.email.strip().casefold()
@@ -112,6 +112,32 @@ async def get_me(
         ],
     )
     return success_response(request, response)
+
+
+@router.get(
+    "/organizations",
+    response_model=SuccessEnvelope[list[OrganizationResponse]],
+    response_model_exclude_none=True,
+)
+async def list_organizations(
+    request: Request,
+    identity: Annotated[AuthenticatedUser, Depends(get_authenticated_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, object]:
+    result = await session.execute(
+        select(Membership, Organization)
+        .join(Organization, Organization.id == Membership.organization_id)
+        .where(Membership.user_id == identity.user_id)
+        .order_by(Organization.name)
+    )
+    organizations = [
+        {
+            **OrganizationResponse.model_validate(org).model_dump(),
+            "role": membership.role,
+        }
+        for membership, org in result.all()
+    ]
+    return success_response(request, organizations)
 
 
 @router.post(

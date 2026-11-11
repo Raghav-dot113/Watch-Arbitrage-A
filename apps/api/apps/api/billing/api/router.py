@@ -52,6 +52,11 @@ async def stripe_webhook(
     stripe_signature: str | None = Header(default=None, alias="Stripe-Signature"),
     session: AsyncSession = _database_dependency,
 ) -> JSONResponse:
+    if not stripe_signature:
+        raise HTTPException(
+            status_code=401,
+            detail="The Stripe signature is missing or invalid.",
+        )
     try:
         result = await BillingService(session).receive_webhook(
             await request.body(),
