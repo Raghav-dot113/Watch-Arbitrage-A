@@ -9,11 +9,15 @@ import { apiClient } from "./client";
 
 const mockGetEnvelope = vi.fn();
 const mockDelete = vi.fn();
+const mockPost = vi.fn();
+const mockPut = vi.fn();
 
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(apiClient, "getEnvelope").mockImplementation(mockGetEnvelope);
   vi.spyOn(apiClient, "delete").mockImplementation(mockDelete);
+  vi.spyOn(apiClient, "post").mockImplementation(mockPost);
+  vi.spyOn(apiClient, "put").mockImplementation(mockPut);
 });
 
 afterEach(() => {
@@ -56,25 +60,22 @@ describe("watchlists api layer", () => {
   });
 
   describe("createWatchList", () => {
-    it("calls apiClient.getEnvelope with POST and auth headers", async () => {
+    it("calls apiClient.post with the watch-lists path and auth headers", async () => {
       const expected = {
-        data: {
-          id: "wl_1",
-          organization_id: "org_1",
-          name: "New List",
-          created_at: "2026-08-02T16:42:19Z",
-          entries: [],
-        },
-        meta: null,
+        id: "wl_1",
+        organization_id: "org_1",
+        name: "New List",
+        created_at: "2026-08-02T16:42:19Z",
+        entries: [],
       };
-      mockGetEnvelope.mockResolvedValue(expected);
+      mockPost.mockResolvedValue(expected);
 
       const result = await createWatchList({
         name: "New List",
         reference_ids: ["ref_1", "ref_2"],
       });
 
-      expect(mockGetEnvelope).toHaveBeenCalledWith(
+      expect(mockPost).toHaveBeenCalledWith(
         "/api/v1/catalog/watch-lists",
         {
           headers: {},
@@ -84,30 +85,27 @@ describe("watchlists api layer", () => {
           }),
         },
       );
-      expect(result).toEqual(expected.data);
+      expect(result).toEqual(expected);
     });
   });
 
   describe("updateWatchList", () => {
-    it("calls apiClient.getEnvelope with PUT path and auth headers", async () => {
+    it("calls apiClient.put with the watch-list path and auth headers", async () => {
       const expected = {
-        data: {
-          id: "wl_1",
-          organization_id: "org_1",
-          name: "Updated List",
-          created_at: "2026-08-02T16:42:19Z",
-          entries: [],
-        },
-        meta: null,
+        id: "wl_1",
+        organization_id: "org_1",
+        name: "Updated List",
+        created_at: "2026-08-02T16:42:19Z",
+        entries: [],
       };
-      mockGetEnvelope.mockResolvedValue(expected);
+      mockPut.mockResolvedValue(expected);
 
       const result = await updateWatchList("wl_1", {
         name: "Updated List",
         reference_ids: ["ref_1"],
       });
 
-      expect(mockGetEnvelope).toHaveBeenCalledWith(
+      expect(mockPut).toHaveBeenCalledWith(
         "/api/v1/catalog/watch-lists/wl_1",
         {
           headers: {},
@@ -117,7 +115,7 @@ describe("watchlists api layer", () => {
           }),
         },
       );
-      expect(result).toEqual(expected.data);
+      expect(result).toEqual(expected);
     });
   });
 

@@ -19,34 +19,34 @@ export async function listWatchLists(): Promise<WatchList[]> {
 export async function createWatchList(
   body: WatchListCreateRequest,
 ): Promise<WatchList> {
-  const envelope = await apiClient.getEnvelope<WatchList>(
+  const result = await apiClient.post<WatchList>(
     "/api/v1/catalog/watch-lists",
     {
       headers: getAuthHeaders(),
       body: JSON.stringify(body),
     },
   );
-  if (envelope.data === null) {
+  if (!result) {
     throw new Error("Invalid watch list create response");
   }
-  return envelope.data;
+  return result;
 }
 
 export async function updateWatchList(
   watchListId: string,
   body: WatchListUpdateRequest,
 ): Promise<WatchList> {
-  const envelope = await apiClient.getEnvelope<WatchList>(
+  const result = await apiClient.put<WatchList>(
     `/api/v1/catalog/watch-lists/${watchListId}`,
     {
       headers: getAuthHeaders(),
       body: JSON.stringify(body),
     },
   );
-  if (envelope.data === null) {
+  if (!result) {
     throw new Error("Invalid watch list update response");
   }
-  return envelope.data;
+  return result;
 }
 
 export async function deleteWatchList(watchListId: string): Promise<void> {

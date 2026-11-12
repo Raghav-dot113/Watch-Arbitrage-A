@@ -12,11 +12,15 @@ import { apiClient } from "./client";
 
 const mockGetEnvelope = vi.fn();
 const mockDelete = vi.fn();
+const mockPost = vi.fn();
+const mockPut = vi.fn();
 
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(apiClient, "getEnvelope").mockImplementation(mockGetEnvelope);
   vi.spyOn(apiClient, "delete").mockImplementation(mockDelete);
+  vi.spyOn(apiClient, "post").mockImplementation(mockPost);
+  vi.spyOn(apiClient, "put").mockImplementation(mockPut);
 });
 
 afterEach(() => {
@@ -64,23 +68,20 @@ describe("alerts api layer", () => {
   });
 
   describe("createAlertRule", () => {
-    it("calls apiClient.getEnvelope with POST path and auth headers", async () => {
+    it("calls apiClient.post with the alert rules path and auth headers", async () => {
       const expected = {
-        data: {
-          id: "ar_1",
-          organization_id: "org_1",
-          created_by: "u1",
-          name: "High profit watches",
-          filters: { reference_ids: ["ref_1"], min_profit: "100.00", max_acquisition: null, conditions: null },
-          channels: ["in_app"],
-          cooldown_minutes: 60,
-          is_enabled: true,
-          created_at: "2026-08-02T16:42:19Z",
-          updated_at: "2026-08-02T16:42:19Z",
-        },
-        meta: null,
+        id: "ar_1",
+        organization_id: "org_1",
+        created_by: "u1",
+        name: "High profit watches",
+        filters: { reference_ids: ["ref_1"], min_profit: "100.00", max_acquisition: null, conditions: null },
+        channels: ["in_app"],
+        cooldown_minutes: 60,
+        is_enabled: true,
+        created_at: "2026-08-02T16:42:19Z",
+        updated_at: "2026-08-02T16:42:19Z",
       };
-      mockGetEnvelope.mockResolvedValue(expected);
+      mockPost.mockResolvedValue(expected);
 
       const result = await createAlertRule({
         name: "High profit watches",
@@ -90,7 +91,7 @@ describe("alerts api layer", () => {
         is_enabled: true,
       });
 
-      expect(mockGetEnvelope).toHaveBeenCalledWith(
+      expect(mockPost).toHaveBeenCalledWith(
         "/api/v1/alerts/rules",
         {
           headers: {},
@@ -103,7 +104,7 @@ describe("alerts api layer", () => {
           }),
         },
       );
-      expect(result).toEqual(expected.data);
+      expect(result).toEqual(expected);
     });
   });
 
@@ -137,23 +138,20 @@ describe("alerts api layer", () => {
   });
 
   describe("updateAlertRule", () => {
-    it("calls apiClient.getEnvelope with PUT path and auth headers", async () => {
+    it("calls apiClient.put with the rule path and auth headers", async () => {
       const expected = {
-        data: {
-          id: "ar_1",
-          organization_id: "org_1",
-          created_by: "u1",
-          name: "Updated rule",
-          filters: { reference_ids: null, min_profit: null, max_acquisition: null, conditions: null },
-          channels: ["in_app"],
-          cooldown_minutes: 30,
-          is_enabled: true,
-          created_at: "2026-08-02T16:42:19Z",
-          updated_at: "2026-08-02T17:00:00Z",
-        },
-        meta: null,
+        id: "ar_1",
+        organization_id: "org_1",
+        created_by: "u1",
+        name: "Updated rule",
+        filters: { reference_ids: null, min_profit: null, max_acquisition: null, conditions: null },
+        channels: ["in_app"],
+        cooldown_minutes: 30,
+        is_enabled: true,
+        created_at: "2026-08-02T16:42:19Z",
+        updated_at: "2026-08-02T17:00:00Z",
       };
-      mockGetEnvelope.mockResolvedValue(expected);
+      mockPut.mockResolvedValue(expected);
 
       const result = await updateAlertRule("ar_1", {
         name: "Updated rule",
@@ -163,7 +161,7 @@ describe("alerts api layer", () => {
         is_enabled: true,
       });
 
-      expect(mockGetEnvelope).toHaveBeenCalledWith(
+      expect(mockPut).toHaveBeenCalledWith(
         "/api/v1/alerts/rules/ar_1",
         {
           headers: {},
@@ -176,7 +174,7 @@ describe("alerts api layer", () => {
           }),
         },
       );
-      expect(result).toEqual(expected.data);
+      expect(result).toEqual(expected);
     });
   });
 
@@ -194,18 +192,19 @@ describe("alerts api layer", () => {
   });
 
   describe("requestAlertTest", () => {
-    it("calls apiClient.getEnvelope with test path and auth headers", async () => {
-      const expected = {
-        data: { event_id: "evt_1", status: "pending" },
-        meta: null,
-      };
-      mockGetEnvelope.mockResolvedValue(expected);
+    it("calls apiClient.post with test path and auth headers", async () => {
+      const expected = { event_id: "evt_1", status: "pending" };
+      mockPost.mockResolvedValue(expected);
 
       const result = await requestAlertTest("ar_1");
 
-      expect(mockGetEnvelope).toHaveBeenCalledWith(
+      expect(mockPost).toHaveBeenCalledWith(
         "/api/v1/alerts/rules/ar_1/test",
-        { headers: {} },
+        {
+          headers: {
+            "Idempotency-Key": expect.any(String),
+          },
+        },
       );
       expect(result).toEqual({ event_id: "evt_1", status: "pending" });
     });

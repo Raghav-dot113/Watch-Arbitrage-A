@@ -20,17 +20,17 @@ export async function listAlertRules(): Promise<AlertRuleResponse[]> {
 export async function createAlertRule(
   body: AlertRuleCreateRequest,
 ): Promise<AlertRuleResponse> {
-  const envelope = await apiClient.getEnvelope<AlertRuleResponse>(
+  const result = await apiClient.post<AlertRuleResponse>(
     "/api/v1/alerts/rules",
     {
       headers: getAuthHeaders(),
       body: JSON.stringify(body),
     },
   );
-  if (envelope.data === null) {
+  if (!result) {
     throw new Error("Invalid alert rule create response");
   }
-  return envelope.data;
+  return result;
 }
 
 export async function getAlertRule(ruleId: string): Promise<AlertRuleResponse> {
@@ -48,17 +48,17 @@ export async function updateAlertRule(
   ruleId: string,
   body: AlertRuleCreateRequest,
 ): Promise<AlertRuleResponse> {
-  const envelope = await apiClient.getEnvelope<AlertRuleResponse>(
+  const result = await apiClient.put<AlertRuleResponse>(
     `/api/v1/alerts/rules/${ruleId}`,
     {
       headers: getAuthHeaders(),
       body: JSON.stringify(body),
     },
   );
-  if (envelope.data === null) {
+  if (!result) {
     throw new Error("Invalid alert rule update response");
   }
-  return envelope.data;
+  return result;
 }
 
 export async function deleteAlertRule(ruleId: string): Promise<void> {
@@ -68,14 +68,16 @@ export async function deleteAlertRule(ruleId: string): Promise<void> {
 }
 
 export async function requestAlertTest(ruleId: string): Promise<AlertTestAcceptedResponse> {
-  const envelope = await apiClient.getEnvelope<AlertTestAcceptedResponse>(
+  const envelope = await apiClient.post<AlertTestAcceptedResponse>(
     `/api/v1/alerts/rules/${ruleId}/test`,
-    { headers: getAuthHeaders() },
+    {
+      headers: {
+        ...getAuthHeaders(),
+        "Idempotency-Key": crypto.randomUUID(),
+      },
+    },
   );
-  if (envelope.data === null) {
-    throw new Error("Invalid alert test response");
-  }
-  return envelope.data;
+  return envelope;
 }
 
 export async function listAlertDeliveries(): Promise<AlertDeliveryResponse[]> {

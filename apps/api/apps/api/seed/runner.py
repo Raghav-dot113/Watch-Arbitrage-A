@@ -13,12 +13,8 @@ from apps.api.billing.infrastructure.models import Subscription
 from apps.api.catalog.infrastructure.models import Brand, Reference, Source
 from apps.api.feedback.infrastructure.models import Feedback, TradeOutcome
 from apps.api.identity.infrastructure.models import Membership, Organization, User
-<<<<<<< HEAD
-from apps.api.infrastructure.database import async_session
-from apps.api.infrastructure.models import Base
-=======
 from apps.api.infrastructure.database import async_session, initialize_dev_sqlite_schema
->>>>>>> ff9d2453712b6ae8252250b05fe54c0830ca3bac
+from apps.api.infrastructure.models import Base
 from apps.api.listings.infrastructure.models import (
     NormalizedListing,
     ParsedListing,
