@@ -214,6 +214,21 @@ async def test_local_dev_token_endpoint_rejects_unknown_emails(auth_client) -> N
     assert response.status_code == 401
 
 
+async def test_local_dev_token_endpoint_reports_missing_database_schema(auth_client) -> None:
+    client, session_factory = auth_client
+    engine = session_factory.kw["bind"]
+    assert engine is not None
+    await engine.dispose()
+
+    response = await client.post(
+        "/api/v1/identity/dev-token",
+        json={"email": "dealer@demo.example.com"},
+    )
+
+    assert response.status_code == 503
+    assert "Database schema is not initialized" in response.json()["detail"]
+
+
 async def test_local_dev_token_endpoint_is_hidden_outside_dev_mode(
     auth_client, monkeypatch: pytest.MonkeyPatch
 ) -> None:

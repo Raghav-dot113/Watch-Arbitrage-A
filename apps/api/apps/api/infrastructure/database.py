@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 
 from apps.api.settings import settings
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -25,6 +26,24 @@ async_session: async_sessionmaker[AsyncSession] = async_sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
 )
+
+
+def is_dev_sqlite_database() -> bool:
+    return (
+        settings.environment in {"local", "test"}
+        and settings.auth_mode == "dev"
+        and make_url(settings.database_url).get_backend_name() == "sqlite"
+    )
+
+
+async def initialize_dev_sqlite_schema() -> None:
+    if not is_dev_sqlite_database():
+        return
+
+    from apps.api.infrastructure.model_registry import get_model_metadata
+
+    async with engine.begin() as connection:
+        await connection.run_sync(get_model_metadata().create_all)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession]:

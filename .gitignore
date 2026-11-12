@@ -21,6 +21,7 @@ Thumbs.db
 dist/
 .next/
 build/
+build/apimatic/
 *.tsbuildinfo
 .dart_tool/
 .packages

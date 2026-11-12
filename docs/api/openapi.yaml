@@ -130,6 +130,18 @@ components:
       type: object
     AlertRuleCreateRequest:
       additionalProperties: false
+      examples:
+      - channels:
+        - in_app
+        - push
+        cooldown_minutes: 60
+        filters:
+          conditions:
+          - excellent
+          - very_good
+          min_profit: '250.00'
+        is_enabled: true
+        name: High-value opportunities
       properties:
         channels:
           items:
@@ -243,6 +255,23 @@ components:
       title: AlertRuleFilters
       type: object
     AlertRuleResponse:
+      examples:
+      - channels:
+        - in_app
+        - push
+        cooldown_minutes: 60
+        created_at: '2026-10-25T10:00:00Z'
+        created_by: user_demo_001
+        filters:
+          conditions:
+          - excellent
+          - very_good
+          min_profit: '250.00'
+        id: alert_rule_demo_001
+        is_enabled: true
+        name: High-value opportunities
+        organization_id: org_demo
+        updated_at: '2026-10-25T10:00:00Z'
       properties:
         channels:
           items:
@@ -421,6 +450,19 @@ components:
         url:
           title: Url
           type: string
+        resource_type:
+          title: Resource Type
+          type: string
+        trace_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Trace Id
+        user_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: User Id
       required:
       - url
       title: Channel3Image
@@ -523,6 +565,19 @@ components:
         title:
           title: Title
           type: string
+        key:
+          title: Key
+          type: string
+        organization_ids:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Organization Ids
+        rollout_pct:
+          title: Rollout Pct
+          type: integer
       required:
       - id
       - title
@@ -598,6 +653,13 @@ components:
         created_at:
           format: date-time
           title: Created At
+          type: string
+        decision:
+          enum:
+          - purchased
+          - contacted
+          - dismissed
+          title: Decision
           type: string
         id:
           title: Id
@@ -4627,12 +4689,71 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessEnvelope_OpportunityDetailResponse_'
           description: Successful Response
+        '401':
+          content:
+            application/json:
+              example:
+                error:
+                  code: UNAUTHORIZED
+                  field_errors: {}
+                  message: Authentication is required or the supplied credentials are invalid.
+                  retryable: false
+                  trace_id: 00000000-0000-4000-8000-000000000001
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+          description: Authentication is required or the supplied credentials are invalid.
+        '403':
+          content:
+            application/json:
+              example:
+                error:
+                  code: FORBIDDEN
+                  field_errors: {}
+                  message: The authenticated user does not have permission for this operation.
+                  retryable: false
+                  trace_id: 00000000-0000-4000-8000-000000000001
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+          description: The authenticated user does not have permission for this operation.
+        '405':
+          content:
+            application/json:
+              example:
+                error:
+                  code: METHOD_NOT_ALLOWED
+                  field_errors: {}
+                  message: The HTTP method is not allowed for this resource.
+                  retryable: false
+                  trace_id: 00000000-0000-4000-8000-000000000001
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+          description: The HTTP method is not allowed for this resource.
         '422':
           content:
             application/json:
+              example:
+                error:
+                  code: VALIDATION_ERROR
+                  field_errors: {}
+                  message: One or more fields are invalid.
+                  retryable: false
+                  trace_id: 00000000-0000-4000-8000-000000000001
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-          description: Validation Error
+                $ref: '#/components/schemas/ApiErrorResponse'
+          description: One or more fields are invalid.
+        '500':
+          content:
+            application/json:
+              example:
+                error:
+                  code: INTERNAL_ERROR
+                  field_errors: {}
+                  message: An internal error occurred.
+                  retryable: true
+                  trace_id: 00000000-0000-4000-8000-000000000001
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+          description: An internal error occurred.
       security:
       - HTTPBearer: []
       summary: Get Opportunity
@@ -4709,9 +4830,44 @@ paths:
           - type: 'null'
           title: X-Organization-Id
       responses:
-        '200':
+        '204':
+          description: Successful Response
+        '401':
           content:
             application/json:
+              example:
+                error:
+                  code: UNAUTHORIZED
+                  field_errors: {}
+                  message: Authentication is required or the supplied credentials are invalid.
+                  retryable: false
+                  trace_id: 00000000-0000-4000-8000-000000000001
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+          description: Authentication is required or the supplied credentials are invalid.
+        '403':
+          content:
+            application/json:
+              example:
+                error:
+                  code: FORBIDDEN
+                  field_errors: {}
+                  message: The authenticated user does not have permission for this operation.
+                  retryable: false
+                  trace_id: 00000000-0000-4000-8000-000000000001
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+          description: The authenticated user does not have permission for this operation.
+        '404':
+          content:
+            application/json:
+              example:
+                error:
+                  code: NOT_FOUND
+                  field_errors: {}
+                  message: The requested resource was not found in the authenticated scope.
+                  retryable: false
+                  trace_id: 00000000-0000-4000-8000-000000000001
               schema:
                 $ref: '#/components/schemas/SuccessEnvelope_list_OpportunityHistoryItemResponse__'
           description: Successful Response
@@ -4760,7 +4916,7 @@ paths:
               $ref: '#/components/schemas/TradeOutcomeCreateRequest'
         required: true
       responses:
-        '200':
+        '201':
           content:
             application/json:
               schema:
@@ -4837,6 +4993,39 @@ paths:
         '422':
           content:
             application/json:
+              example:
+                error:
+                  code: UNAUTHORIZED
+                  field_errors: {}
+                  message: Authentication is required or the supplied credentials are invalid.
+                  retryable: false
+                  trace_id: 00000000-0000-4000-8000-000000000001
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+          description: Authentication is required or the supplied credentials are invalid.
+        '403':
+          content:
+            application/json:
+              example:
+                error:
+                  code: FORBIDDEN
+                  field_errors: {}
+                  message: The authenticated user does not have permission for this operation.
+                  retryable: false
+                  trace_id: 00000000-0000-4000-8000-000000000001
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+          description: The authenticated user does not have permission for this operation.
+        '404':
+          content:
+            application/json:
+              example:
+                error:
+                  code: NOT_FOUND
+                  field_errors: {}
+                  message: The requested resource was not found in the authenticated scope.
+                  retryable: false
+                  trace_id: 00000000-0000-4000-8000-000000000001
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
           description: Validation Error
@@ -4870,6 +5059,26 @@ paths:
         '422':
           content:
             application/json:
+              example:
+                error:
+                  code: VALIDATION_ERROR
+                  field_errors: {}
+                  message: One or more fields are invalid.
+                  retryable: false
+                  trace_id: 00000000-0000-4000-8000-000000000001
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+          description: One or more fields are invalid.
+        '500':
+          content:
+            application/json:
+              example:
+                error:
+                  code: INTERNAL_ERROR
+                  field_errors: {}
+                  message: An internal error occurred.
+                  retryable: true
+                  trace_id: 00000000-0000-4000-8000-000000000001
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
           description: Validation Error

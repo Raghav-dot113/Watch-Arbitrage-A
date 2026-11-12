@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from apps.api.schemas import ApiError
-from fastapi import Request
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError as PydanticValidationError
@@ -12,12 +12,19 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 logger = logging.getLogger("chronoarb.api")
 
 
+def register_api_error_handlers(app: FastAPI) -> None:
+    app.add_exception_handler(RequestValidationError, request_validation_handler)
+    app.add_exception_handler(PydanticValidationError, pydantic_validation_handler)
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+    app.add_exception_handler(Exception, generic_exception_handler)
+
+
 def _field_errors_from_exception(exc: Exception) -> dict[str, list[str]]:
     field_errors: dict[str, list[str]] = {}
     if isinstance(exc, (RequestValidationError, PydanticValidationError)):
         for error in exc.errors():
             loc = error.get("loc", ())
-            key = ".".join(str(part) for part in loc if str(part) != "body") or "request"
+            key = ".".join(str(part) for part in loc) or "request"
             field_errors.setdefault(key, []).append(str(error.get("msg", "Invalid value.")))
     return field_errors
 
@@ -108,15 +115,21 @@ async def http_exception_handler(request: Request, exc: Exception) -> JSONRespon
         retryable = True
     elif exc.status_code == 401:
         code = "UNAUTHORIZED"
+        message = "Authentication is required."
         retryable = False
     elif exc.status_code == 403:
         code = "FORBIDDEN"
+        message = "The authenticated user does not have permission for this operation."
         retryable = False
     elif exc.status_code == 404:
         code = "NOT_FOUND"
         retryable = False
     elif exc.status_code == 409:
         code = "CONFLICT"
+        retryable = False
+    elif exc.status_code == 405:
+        code = "METHOD_NOT_ALLOWED"
+        message = "The HTTP method is not allowed for this resource."
         retryable = False
     elif exc.status_code == 422:
         code = "VALIDATION_ERROR"
