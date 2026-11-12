@@ -10,6 +10,7 @@ from apps.api.catalog.application.channel3 import (
     Channel3Price,
     Channel3Product,
     Channel3SearchResponse,
+    Channel3UnavailableError,
 )
 from apps.api.catalog.infrastructure.channel3_client import Channel3Client
 from apps.api.catalog.infrastructure.models import Brand, Reference, WatchList
@@ -301,17 +302,94 @@ async def test_catalog_requires_authentication(
 async def test_channel3_watch_search_reports_missing_server_key(
     b09_client: tuple[AsyncClient, async_sessionmaker[AsyncSession]],
     monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     client, _ = b09_client
     monkeypatch.setattr(settings, "channel3_api_key", SecretStr(""))
 
-    response = await client.post(
-        "/api/v1/catalog/channel3/search",
-        json={"query": "Rolex Submariner"},
-    )
+    with caplog.at_level("WARNING", logger="chronoarb.api"):
+        response = await client.post(
+            "/api/v1/catalog/channel3/search",
+            json={"query": "Rolex Submariner"},
+            headers={"X-Trace-Id": "trc_channel3_missing_key"},
+        )
 
     assert response.status_code == 503
-    assert response.json()["error"]["code"] == "SERVICE_UNAVAILABLE"
+    assert response.json()["error"]["code"] == "not_configured"
+    assert response.json()["error"]["message"] == "Search provider is not configured."
+    assert response.json()["error"]["retryable"] is False
+    assert any(
+        record.getMessage() == "channel3_search_failed"
+        and record.trace_id == "trc_channel3_missing_key"
+        and record.provider_status_code is None
+        for record in caplog.records
+    )
+
+
+@pytest.mark.parametrize(
+    ("provider_status_code", "code", "message", "retryable", "http_status"),
+    [
+        (401, "invalid_key", "The search provider key is invalid.", False, 502),
+        (402, "credits_exhausted", "Search credits are exhausted.", False, 503),
+        (429, "rate_limited", "The search provider is rate limited.", True, 429),
+        (
+            200,
+            "invalid_provider_response",
+            "Search provider returned an invalid response.",
+            False,
+            502,
+        ),
+    ],
+)
+async def test_channel3_search_errors_use_specific_safe_envelopes(
+    b09_client: tuple[AsyncClient, async_sessionmaker[AsyncSession]],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    provider_status_code: int,
+    code: str,
+    message: str,
+    retryable: bool,
+    http_status: int,
+) -> None:
+    client, _ = b09_client
+    monkeypatch.setattr(settings, "channel3_api_key", SecretStr("test-channel3-key"))
+
+    async def fail_search(
+        self: Channel3Client,
+        *,
+        query: str,
+        limit: int,
+        page_token: str | None,
+    ) -> Channel3SearchResponse:
+        raise Channel3UnavailableError(
+            provider_status_code,
+            code=code,
+            message=message,
+            retryable=retryable,
+        )
+
+    monkeypatch.setattr(Channel3Client, "search", fail_search)
+    with caplog.at_level("WARNING", logger="chronoarb.api"):
+        response = await client.post(
+            "/api/v1/catalog/channel3/search",
+            json={"query": "Rolex Submariner"},
+            headers={"X-Trace-Id": "trc_channel3_provider_error"},
+        )
+
+    assert response.status_code == http_status
+    error = response.json()["error"]
+    assert error["code"] == code
+    assert error["message"].startswith(message)
+    assert error["retryable"] is retryable
+    assert error["trace_id"] == "trc_channel3_provider_error"
+    assert "test-channel3-key" not in response.text
+    assert "private-provider-body" not in response.text
+    assert any(
+        record.getMessage() == "channel3_search_failed"
+        and record.trace_id == "trc_channel3_provider_error"
+        and record.provider_status_code == provider_status_code
+        for record in caplog.records
+    )
 
 
 async def test_channel3_watch_search_returns_authenticated_catalog_results(

@@ -387,6 +387,7 @@ export interface DuplicateGroup {
 export interface Channel3Price {
   amount: string;
   currency: string;
+  compare_at_price?: string | null;
 }
 
 export interface Channel3Brand {
@@ -405,7 +406,7 @@ export interface Channel3Image {
 export interface Channel3Offer {
   url: string;
   domain: string;
-  price: Channel3Price;
+  price?: Channel3Price | null;
   availability: string;
   condition: string | null;
   max_commission_rate: string | null;

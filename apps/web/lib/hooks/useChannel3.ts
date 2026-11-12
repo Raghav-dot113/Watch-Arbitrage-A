@@ -10,6 +10,7 @@ export function useChannel3Search(params: Channel3SearchRequest | null) {
     },
     enabled: !!params,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: false,
   });
 }
 

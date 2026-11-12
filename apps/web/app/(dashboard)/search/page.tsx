@@ -1,49 +1,131 @@
 "use client";
 
-import { useState } from "react";
-import { Box, Button, Card, CardContent, Grid, TextField, Typography, Chip, IconButton } from "@mui/material";
-import { Search as SearchIcon, Launch as LaunchIcon, Favorite as FavoriteIcon } from "@mui/icons-material";
+import { useState, type FormEvent } from "react";
+import { HttpError } from "@chronoarb/api-client";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Grid,
+  TextField,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import {
+  Search as SearchIcon,
+  Launch as LaunchIcon,
+  Favorite as FavoriteIcon,
+} from "@mui/icons-material";
 import { PageContainer } from "../../../components/ui/PageContainer";
 import { PageHeader } from "../../../components/shell/PageHeader";
 import { LoadingState } from "../../../components/ui/LoadingState";
 import { ErrorState } from "../../../components/ui/ErrorState";
 import { EmptyState } from "../../../components/ui/EmptyState";
-import { useChannel3Search, type Channel3Product, type Channel3Offer, type Channel3Price, type Channel3SearchRequest } from "../../../lib/hooks";
+import {
+  useChannel3Search,
+  type Channel3Product,
+  type Channel3Offer,
+  type Channel3SearchRequest,
+} from "../../../lib/hooks";
+import { formatCurrency } from "../../../lib/formatters/currency";
+
+const MIN_LIMIT = 1;
+const MAX_LIMIT = 50;
+const DEFAULT_LIMIT = 20;
 
 interface SearchFormState {
   query: string;
   limit: number;
 }
 
+function clampLimit(value: number): number {
+  return Math.min(MAX_LIMIT, Math.max(MIN_LIMIT, Math.trunc(value) || MIN_LIMIT));
+}
+
+function getNumericPrice(offer: Channel3Offer): number | null {
+  const amount = offer.price?.amount.trim();
+  if (!amount) return null;
+  const numericPrice = Number(amount);
+  return Number.isFinite(numericPrice) ? numericPrice : null;
+}
+
+function getBestOffer(product: Channel3Product): Channel3Offer | null {
+  const pricedOffers = product.offers.flatMap((offer) => {
+    const price = getNumericPrice(offer);
+    return price === null ? [] : [{ offer, price }];
+  });
+  const inStockOffers = pricedOffers.filter(
+    ({ offer }) => offer.availability === "InStock",
+  );
+  const candidates = inStockOffers.length > 0 ? inStockOffers : pricedOffers;
+  if (candidates.length === 0) return null;
+
+  return candidates.reduce((best, candidate) =>
+    candidate.price < best.price ? candidate : best,
+  ).offer;
+}
+
+function getSearchErrorMessage(error: unknown): string {
+  if (error instanceof HttpError) {
+    return `${error.error.message} (${error.error.code})`;
+  }
+  if (error instanceof Error) return error.message;
+  return "Search failed. Please try again.";
+}
+
 export default function SearchPage() {
-  const [formState, setFormState] = useState<SearchFormState>({ query: "", limit: 20 });
+  const [formState, setFormState] = useState<SearchFormState>({
+    query: "",
+    limit: DEFAULT_LIMIT,
+  });
   const [searchParams, setSearchParams] = useState<Channel3SearchRequest | null>(null);
   const [lastQuery, setLastQuery] = useState<string>("");
+  const [queryError, setQueryError] = useState(false);
 
-  const { data, isLoading, isError, error, refetch } = useChannel3Search(searchParams);
+  const {
+    data,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useChannel3Search(searchParams);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (formState.query.trim().length < 2) return;
+    const query = formState.query.trim();
+    if (query.length < 2) {
+      setQueryError(true);
+      return;
+    }
+
+    setQueryError(false);
+    const limit = clampLimit(formState.limit);
     const params: Channel3SearchRequest = {
-      query: formState.query.trim(),
-      limit: formState.limit,
+      query,
+      limit,
     };
-    setSearchParams(params);
-    setLastQuery(formState.query.trim());
+    setFormState((current) => ({ ...current, limit }));
+    setLastQuery(query);
+
+    if (
+      searchParams?.query === params.query &&
+      searchParams.limit === params.limit &&
+      searchParams.page_token === params.page_token
+    ) {
+      void refetch();
+    } else {
+      setSearchParams(params);
+    }
   };
 
   const handleClear = () => {
-    setFormState({ query: "", limit: 20 });
+    setFormState({ query: "", limit: DEFAULT_LIMIT });
     setSearchParams(null);
     setLastQuery("");
-  };
-
-  const formatPrice = (price: Channel3Price) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: price.currency,
-    }).format(parseFloat(price.amount));
+    setQueryError(false);
   };
 
   const getMainImage = (product: Channel3Product): string | null => {
@@ -51,37 +133,7 @@ export default function SearchPage() {
     return mainImage?.url ?? product.images[0]?.url ?? null;
   };
 
-  const getBestOffer = (product: Channel3Product): Channel3Offer | null => {
-    if (product.offers.length === 0) return null;
-    return product.offers.reduce((best, offer) => {
-      const bestPrice = parseFloat(best.price.amount);
-      const offerPrice = parseFloat(offer.price.amount);
-      return offerPrice < bestPrice ? offer : best;
-    });
-  };
-
-  if (isLoading && !data) {
-    return (
-      <PageContainer>
-        <LoadingState label="Searching watches" fullPage />
-      </PageContainer>
-    );
-  }
-
-  if (isError) {
-    return (
-      <PageContainer>
-        <ErrorState
-          title="Search failed"
-          description={error instanceof Error ? error.message : "An unexpected error occurred."}
-          retryLabel="Try again"
-          onRetry={() => refetch()}
-        />
-      </PageContainer>
-    );
-  }
-
-  const products = data?.products ?? [];
+  const products = searchParams ? data?.products ?? [] : [];
 
   return (
     <PageContainer>
@@ -93,27 +145,65 @@ export default function SearchPage() {
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
           <form onSubmit={handleSubmit}>
-            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <Box
+              sx={{
+                display: "flex",
+                gap: 2,
+                flexWrap: "wrap",
+                alignItems: "flex-end",
+              }}
+            >
               <TextField
                 label="Search watches"
                 placeholder="e.g., Rolex Submariner, Omega Speedmaster"
                 value={formState.query}
-                onChange={(e) => setFormState({ ...formState, query: e.target.value })}
+                onChange={(event) => {
+                  setFormState((current) => ({
+                    ...current,
+                    query: event.target.value,
+                  }));
+                  setQueryError(false);
+                }}
                 fullWidth
                 sx={{ flex: 1, minWidth: 300 }}
+                error={queryError}
+                helperText="Enter at least 2 characters."
               />
               <TextField
                 type="number"
                 label="Results limit"
                 value={formState.limit}
-                onChange={(e) => setFormState({ ...formState, limit: parseInt(e.target.value) || 20 })}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    limit: Number(event.target.value),
+                  }))
+                }
+                slotProps={{ htmlInput: { min: MIN_LIMIT, max: MAX_LIMIT } }}
                 sx={{ minWidth: 160 }}
               />
-              <Button type="submit" variant="contained" size="large" startIcon={<SearchIcon />}>
-                Search
+              <Button
+                type="submit"
+                variant="contained"
+                size="large"
+                disabled={isFetching}
+                startIcon={
+                  isFetching ? (
+                    <CircularProgress size={18} color="inherit" aria-label="Searching" />
+                  ) : (
+                    <SearchIcon />
+                  )
+                }
+              >
+                {isFetching ? "Searching..." : "Search"}
               </Button>
-              {lastQuery && (
-                <Button variant="outlined" onClick={handleClear} startIcon={<SearchIcon fontSize="small" />}>
+              {(lastQuery || formState.query) && (
+                <Button
+                  type="button"
+                  variant="outlined"
+                  onClick={handleClear}
+                  startIcon={<SearchIcon fontSize="small" />}
+                >
                   Clear
                 </Button>
               )}
@@ -122,20 +212,30 @@ export default function SearchPage() {
         </CardContent>
       </Card>
 
-      {products.length === 0 && searchParams && !isLoading ? (
+      {isFetching && <LoadingState label="Searching watches" />}
+      {isError && (
+        <ErrorState
+          title="Search failed"
+          description={getSearchErrorMessage(error)}
+          retryLabel="Try again"
+          onRetry={() => void refetch()}
+        />
+      )}
+      {!isFetching && !isError && products.length === 0 && searchParams ? (
         <EmptyState
           title="No watches found"
           description={`No results found for "${lastQuery}". Try a different search term.`}
         />
-      ) : products.length > 0 ? (
+      ) : !isFetching && !isError && products.length > 0 ? (
         <>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2, display: "block" }}>
-            Found {products.length} watch{products.length !== 1 ? "es" : ""} for "{lastQuery}"
+            Found {products.length} watch{products.length !== 1 ? "es" : ""} for &quot;
+            {lastQuery}&quot;
           </Typography>
           <Grid container spacing={3}>
             {products.map((product: Channel3Product) => (
               <Grid size={{ xs: 12, sm: 6, lg: 4, xl: 3 }} key={product.id}>
-                <ProductCard product={product} getMainImage={getMainImage} getBestOffer={getBestOffer} formatPrice={formatPrice} />
+                <ProductCard product={product} getMainImage={getMainImage} />
               </Grid>
             ))}
           </Grid>
@@ -148,13 +248,9 @@ export default function SearchPage() {
 function ProductCard({
   product,
   getMainImage,
-  getBestOffer,
-  formatPrice,
 }: {
   product: Channel3Product;
   getMainImage: (p: Channel3Product) => string | null;
-  getBestOffer: (p: Channel3Product) => Channel3Offer | null;
-  formatPrice: (price: Channel3Price) => string;
 }) {
   const image = getMainImage(product);
   const bestOffer = getBestOffer(product);
@@ -217,15 +313,24 @@ function ProductCard({
         )}
         {bestOffer && (
           <Box sx={{ mb: 2, display: "flex", alignItems: "baseline", gap: 1 }}>
-            <Typography variant="h6" color="primary" sx={{ fontWeight: 700 }}>
-              {formatPrice(bestOffer.price)}
-            </Typography>
+            {bestOffer.price && (
+              <Typography variant="h6" color="primary" sx={{ fontWeight: 700 }}>
+                {formatCurrency(bestOffer.price.amount, bestOffer.price.currency)}
+              </Typography>
+            )}
             <Chip
               label={bestOffer.domain}
               size="small"
               variant="outlined"
               color="default"
             />
+            {bestOffer.condition && (
+              <Chip
+                label={bestOffer.condition}
+                size="small"
+                variant="outlined"
+              />
+            )}
           </Box>
         )}
         <Box sx={{ mt: "auto", display: "flex", gap: 1 }}>
@@ -242,14 +347,19 @@ function ProductCard({
               View Offer
             </Button>
           )}
-          <Button
-            variant="outlined"
-            size="small"
-            fullWidth
-            startIcon={<FavoriteIcon fontSize="small" />}
-          >
-            Watch
-          </Button>
+          <Tooltip title="Coming soon">
+            <span>
+              <Button
+                variant="outlined"
+                size="small"
+                fullWidth
+                disabled
+                startIcon={<FavoriteIcon fontSize="small" />}
+              >
+                Watch
+              </Button>
+            </span>
+          </Tooltip>
         </Box>
       </CardContent>
     </Card>

@@ -106,7 +106,14 @@ async def http_exception_handler(request: Request, exc: Exception) -> JSONRespon
     else:
         message = "The request could not be completed."
 
-    if exc.status_code == 503:
+    custom_code = detail.get("code") if isinstance(detail, dict) else None
+    custom_retryable = detail.get("retryable") if isinstance(detail, dict) else None
+    if isinstance(custom_code, str):
+        code = custom_code
+        retryable = (
+            custom_retryable if isinstance(custom_retryable, bool) else exc.status_code >= 500
+        )
+    elif exc.status_code == 503:
         code = "SERVICE_UNAVAILABLE"
         retryable = True
     elif exc.status_code >= 500:

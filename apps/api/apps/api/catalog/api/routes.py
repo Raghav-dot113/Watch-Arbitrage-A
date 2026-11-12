@@ -35,6 +35,7 @@ from apps.api.identity.api.auth import (
 from apps.api.infrastructure.api_response import SuccessEnvelope, success_response
 from apps.api.infrastructure.database import get_db
 from apps.api.infrastructure.http_status import HTTP_422_UNPROCESSABLE_ENTITY
+from apps.api.schemas import ApiErrorResponse
 from apps.api.settings import settings
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,8 +55,21 @@ def get_channel3_search_gateway() -> Channel3SearchGateway:
 
 @router.post(
     "/channel3/search",
+    summary="Search Channel3 watches",
+    description="Search the Channel3 catalog for watch offers.",
     response_model=SuccessEnvelope[Channel3SearchResponse],
     response_model_exclude_none=True,
+    responses={
+        429: {"model": ApiErrorResponse, "description": "Search provider rate limit reached."},
+        502: {
+            "model": ApiErrorResponse,
+            "description": "Search provider returned an invalid response.",
+        },
+        503: {
+            "model": ApiErrorResponse,
+            "description": "Search provider is not configured or unavailable.",
+        },
+    },
 )
 async def search_channel3_watches(
     payload: Channel3SearchRequest,
@@ -71,21 +85,35 @@ async def search_channel3_watches(
             page_token=payload.page_token,
         )
     except Channel3NotConfiguredError as error:
+        _log_channel3_failure(request, code="not_configured", provider_status_code=None)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Watch search provider is not configured.",
+            detail={
+                "code": "not_configured",
+                "message": "Search provider is not configured.",
+                "retryable": False,
+            },
         ) from error
     except Channel3UnavailableError as error:
-        logger.warning(
-            "channel3_search_unavailable",
-            extra={
-                "trace_id": getattr(request.state, "trace_id", "unknown"),
-                "provider_status_code": error.status_code,
-            },
+        _log_channel3_failure(
+            request,
+            code=error.code,
+            provider_status_code=error.status_code,
         )
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Watch search is temporarily unavailable.",
+            status_code=(
+                status.HTTP_429_TOO_MANY_REQUESTS
+                if error.code == "rate_limited"
+                else status.HTTP_502_BAD_GATEWAY
+                if error.code
+                in {"invalid_key", "invalid_provider_response", "provider_rejected_request"}
+                else status.HTTP_503_SERVICE_UNAVAILABLE
+            ),
+            detail={
+                "code": error.code,
+                "message": error.message,
+                "retryable": error.retryable,
+            },
         ) from error
     return success_response(request, result)
 
@@ -262,3 +290,19 @@ def _organization_id(actor: AuthContext) -> str:
     if actor.organization_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     return actor.organization_id
+
+
+def _log_channel3_failure(
+    request: Request,
+    *,
+    code: str,
+    provider_status_code: int | None,
+) -> None:
+    logger.warning(
+        "channel3_search_failed",
+        extra={
+            "trace_id": getattr(request.state, "trace_id", "unknown"),
+            "provider_status_code": provider_status_code,
+            "error_code": code,
+        },
+    )

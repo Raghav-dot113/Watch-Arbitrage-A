@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
-from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
@@ -36,7 +36,13 @@ class Settings(BaseSettings):
     platform_ops_subjects: str = ""
     cors_origins: str = "http://localhost:3000"
     integration_encryption_key: SecretStr = SecretStr("")
-    channel3_api_key: SecretStr = SecretStr("")
+    channel3_api_key: SecretStr = Field(
+        default=SecretStr(""),
+        validation_alias=AliasChoices(
+            "CHRONOARB_CHANNEL3_API_KEY",
+            "CHANNEL3_API_KEY",
+        ),
+    )
     telegram_bot_token: SecretStr = SecretStr("")
     telegram_bot_username: str = ""
     paypal_client_id: str = ""

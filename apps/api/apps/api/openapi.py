@@ -18,6 +18,7 @@ OPERATION_DESCRIPTIONS = {
     "list_brands": "Lists brands available in the catalog.",
     "list_references": "Searches catalog references with optional brand and cursor filters.",
     "get_reference": "Returns catalog details and aliases for a reference.",
+    "search_channel3_watches": "Searches the Channel3 catalog for watch offers.",
     "list_watch_lists": "Lists watch lists belonging to the authenticated organization.",
     "create_watch_list": "Creates a watch list for the authenticated organization.",
     "update_watch_list": "Replaces the name and catalog references in a watch list.",
@@ -68,6 +69,7 @@ OPERATION_DESCRIPTIONS = {
 }
 
 ROUTE_ERROR_STATUS_CODES: dict[str, tuple[int, ...]] = {
+    "search_channel3_watches": (429, 502, 503),
     "create_organization": (409,),
     "get_organization": (404,),
     "patch_organization": (404,),
@@ -127,6 +129,8 @@ ERROR_RESPONSES: dict[int, tuple[str, str, bool]] = {
     409: ("The request conflicts with the current resource or prior state.", "CONFLICT", False),
     413: ("The request payload exceeds the accepted size.", "REQUEST_ERROR", False),
     422: ("One or more fields are invalid.", "VALIDATION_ERROR", False),
+    429: ("The search provider is rate limited.", "rate_limited", True),
+    502: ("The search provider response could not be used.", "invalid_provider_response", False),
     500: ("An internal error occurred.", "INTERNAL_ERROR", True),
     503: ("A required service is unavailable.", "SERVICE_UNAVAILABLE", True),
 }

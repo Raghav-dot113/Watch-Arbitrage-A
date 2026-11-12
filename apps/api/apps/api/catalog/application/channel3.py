@@ -14,6 +14,7 @@ class _Channel3Model(BaseModel):
 class Channel3Price(_Channel3Model):
     amount: Decimal
     currency: str
+    compare_at_price: Decimal | None = None
 
 
 class Channel3Brand(_Channel3Model):
@@ -32,7 +33,7 @@ class Channel3Image(_Channel3Model):
 class Channel3Offer(_Channel3Model):
     url: str
     domain: str
-    price: Channel3Price
+    price: Channel3Price | None = None
     availability: str
     condition: str | None = None
     max_commission_rate: Decimal | None = None
@@ -74,6 +75,16 @@ class Channel3NotConfiguredError(Exception):
 class Channel3UnavailableError(Exception):
     """Raised when Channel3 cannot return a valid search response."""
 
-    def __init__(self, status_code: int | None = None) -> None:
-        super().__init__("Channel3 search is unavailable")
+    def __init__(
+        self,
+        status_code: int | None = None,
+        *,
+        code: str = "provider_unavailable",
+        message: str = "Search provider is temporarily unavailable.",
+        retryable: bool = True,
+    ) -> None:
+        super().__init__(message)
         self.status_code = status_code
+        self.code = code
+        self.message = message
+        self.retryable = retryable

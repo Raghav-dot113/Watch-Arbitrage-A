@@ -33,6 +33,17 @@ def _create_error_app() -> FastAPI:
     async def unavailable() -> None:
         raise HTTPException(status_code=503, detail="Unavailable.")
 
+    @app.get("/errors/custom")
+    async def custom_error() -> None:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "not_configured",
+                "message": "Search provider is not configured.",
+                "retryable": False,
+            },
+        )
+
     @app.get("/errors/500")
     async def internal_error() -> None:
         raise RuntimeError("internal detail must not be returned")
@@ -92,3 +103,18 @@ async def test_validation_envelope_includes_field_errors() -> None:
 
     assert response.status_code == 422
     assert response.json()["error"]["field_errors"]["query.value"]
+
+
+async def test_http_exception_preserves_explicit_error_code_and_retryability() -> None:
+    transport = ASGITransport(app=_create_error_app())
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/errors/custom")
+
+    assert response.status_code == 503
+    assert response.json()["error"] == {
+        "code": "not_configured",
+        "message": "Search provider is not configured.",
+        "field_errors": {},
+        "trace_id": response.json()["error"]["trace_id"],
+        "retryable": False,
+    }

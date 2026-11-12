@@ -50,6 +50,10 @@ logger = logging.getLogger("chronoarb.api")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
+    logger.info(
+        "channel3_api_key_configured=%s",
+        "true" if settings.channel3_api_key.get_secret_value().strip() else "false",
+    )
     if is_dev_sqlite_database():
         await initialize_dev_sqlite_schema()
     yield
