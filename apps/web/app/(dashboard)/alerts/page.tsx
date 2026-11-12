@@ -4,12 +4,10 @@ import React from "react";
 import {
   Box,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   TextField,
   Typography,
 } from "@mui/material";
@@ -18,6 +16,11 @@ import { PageContainer } from "../../../components/ui/PageContainer";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { ErrorState } from "../../../components/ui/ErrorState";
 import { LoadingState } from "../../../components/ui/LoadingState";
+import {
+  ChronoArbGrid,
+  type ChronoArbGridAction,
+  type ChronoArbGridColumn,
+} from "../../../components/bryntum/ChronoArbGrid";
 import {
   useAlertRules,
   useCreateAlertRule,
@@ -36,6 +39,83 @@ const CHANNEL_LABEL: Record<string, string> = {
   push: "Push",
   telegram: "Telegram",
 };
+
+function filterSummary(rule: AlertRuleResponse): string {
+  const parts: string[] = [];
+  const references = rule.filters.reference_ids ?? [];
+  if (references.length > 0) {
+    parts.push(`${references.length} ref${references.length === 1 ? "" : "s"}`);
+  }
+  if (rule.filters.min_profit) parts.push(`min profit ${rule.filters.min_profit}`);
+  if (rule.filters.max_acquisition) {
+    parts.push(`max acquisition ${rule.filters.max_acquisition}`);
+  }
+  const conditions = rule.filters.conditions ?? [];
+  if (conditions.length > 0) parts.push(conditions.join(", "));
+  return parts.join(" • ") || "Any opportunity";
+}
+
+const RULE_COLUMNS: ChronoArbGridColumn<AlertRuleResponse>[] = [
+  { field: "name", text: "Rule", flex: 1, render: (rule) => rule.name },
+  {
+    field: "channels",
+    text: "Channels",
+    width: 170,
+    render: (rule) => rule.channels.map((channel) => CHANNEL_LABEL[channel] ?? channel).join(", "),
+  },
+  { field: "filters", text: "Filters", width: 280, render: filterSummary },
+  {
+    field: "cooldown_minutes",
+    text: "Cooldown",
+    width: 110,
+    render: (rule) => `${rule.cooldown_minutes} min`,
+  },
+  {
+    field: "is_enabled",
+    text: "Status",
+    width: 100,
+    render: (rule) => (rule.is_enabled ? "Enabled" : "Disabled"),
+  },
+  {
+    field: "created_at",
+    text: "Created",
+    width: 170,
+    render: (rule) => formatDate(rule.created_at),
+  },
+];
+
+const DELIVERY_COLUMNS: ChronoArbGridColumn<AlertDeliveryResponse>[] = [
+  {
+    field: "channel",
+    text: "Channel",
+    width: 110,
+    render: (delivery) => CHANNEL_LABEL[delivery.channel] ?? delivery.channel,
+  },
+  {
+    field: "delivery_status",
+    text: "Status",
+    width: 110,
+    render: (delivery) => delivery.delivery_status,
+  },
+  {
+    field: "opportunity_id",
+    text: "Opportunity",
+    width: 180,
+    render: (delivery) => delivery.opportunity_id,
+  },
+  {
+    field: "material_version",
+    text: "Version",
+    width: 100,
+    render: (delivery) => `v${delivery.material_version}`,
+  },
+  {
+    field: "created_at",
+    text: "Created",
+    width: 170,
+    render: (delivery) => formatDate(delivery.created_at),
+  },
+];
 
 interface AlertRuleFormData {
   name: string;
@@ -74,6 +154,53 @@ export default function AlertsPage() {
     channels: "in_app",
     cooldown_minutes: "60",
   });
+
+  const openCreateDialog = React.useCallback(() => {
+    setForm({
+      name: "",
+      reference_ids: "",
+      min_profit: "",
+      max_acquisition: "",
+      conditions: "",
+      channels: "in_app",
+      cooldown_minutes: "60",
+    });
+    setDialogOpen(true);
+  }, []);
+
+  const openEditDialog = React.useCallback((rule: AlertRuleResponse) => {
+    setForm({
+      name: rule.name,
+      reference_ids: (rule.filters.reference_ids ?? []).join(", "),
+      min_profit: rule.filters.min_profit ?? "",
+      max_acquisition: rule.filters.max_acquisition ?? "",
+      conditions: (rule.filters.conditions ?? []).join(", "),
+      channels: rule.channels.join(", "),
+      cooldown_minutes: String(rule.cooldown_minutes),
+    });
+    setEditingId(rule.id);
+    setEditDialogOpen(true);
+  }, []);
+
+  const openTestDialog = React.useCallback((rule: AlertRuleResponse) => {
+    setTestingId(rule.id);
+    setTestDialogOpen(true);
+    setTestResult(null);
+  }, []);
+
+  const openDeleteDialog = React.useCallback((rule: AlertRuleResponse) => {
+    setDeleteId(rule.id);
+    setDeleteConfirmOpen(true);
+  }, []);
+
+  const ruleActions = React.useMemo<ChronoArbGridAction<AlertRuleResponse>[]>(
+    () => [
+      { key: "edit", label: "Edit", onClick: openEditDialog },
+      { key: "test", label: "Test", onClick: openTestDialog },
+      { key: "delete", label: "Delete", tone: "danger", onClick: openDeleteDialog },
+    ],
+    [openDeleteDialog, openEditDialog, openTestDialog],
+  );
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,27 +322,13 @@ export default function AlertsPage() {
         title="Alerts"
         description="Manage your matching rules and notifications."
         actions={
-          <Button
-            variant="outlined"
-            onClick={() => {
-              setForm({
-                name: "",
-                reference_ids: "",
-                min_profit: "",
-                max_acquisition: "",
-                conditions: "",
-                channels: "in_app",
-                cooldown_minutes: "60",
-              });
-              setDialogOpen(true);
-            }}
-          >
+          <Button variant="outlined" onClick={openCreateDialog}>
             Create alert rule
           </Button>
         }
       />
-      <Box sx={{ display: "flex", gap: 2 }}>
-        <Box sx={{ flex: 1 }}>
+      <Box sx={{ display: "flex", flexDirection: { xs: "column", lg: "row" }, gap: 2 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
             Alert Rules
           </Typography>
@@ -224,106 +337,19 @@ export default function AlertsPage() {
               title="No alert rules"
               description="Create your first alert rule to get notified about matching opportunities."
               actionLabel="Create alert rule"
-              onAction={() => {
-                setForm({
-                  name: "",
-                  reference_ids: "",
-                  min_profit: "",
-                  max_acquisition: "",
-                  conditions: "",
-                  channels: "in_app",
-                  cooldown_minutes: "60",
-                });
-                setDialogOpen(true);
-              }}
+              onAction={openCreateDialog}
             />
           ) : (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              {alertRules.map((rule) => (
-                <Box
-                  key={rule.id}
-                  sx={{
-                    p: 2,
-                    bgcolor: "background.paper",
-                    border: `1px solid`,
-                    borderColor: "divider",
-                    borderRadius: "md",
-                  }}
-                >
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "text.primary" }}>
-                      {rule.name}
-                    </Typography>
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => {
-                          setForm({
-                            name: rule.name,
-                            reference_ids: (rule.filters.reference_ids ?? []).join(", "),
-                            min_profit: rule.filters.min_profit ?? "",
-                            max_acquisition: rule.filters.max_acquisition ?? "",
-                            conditions: (rule.filters.conditions ?? []).join(", "),
-                            channels: rule.channels.join(", "),
-                            cooldown_minutes: String(rule.cooldown_minutes),
-                          });
-                          setEditingId(rule.id);
-                          setEditDialogOpen(true);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => {
-                          setTestingId(rule.id);
-                          setTestDialogOpen(true);
-                          setTestResult(null);
-                        }}
-                      >
-                        Test
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="error"
-                        onClick={() => {
-                          setDeleteId(rule.id);
-                          setDeleteConfirmOpen(true);
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </Box>
-                  </Box>
-                  <Box sx={{ mb: 1 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Channels:{rule.channels.map((c) => CHANNEL_LABEL[c] ?? c).join(", ")} •
-                      Cooldown: {rule.cooldown_minutes} min •
-                      {rule.is_enabled ? "Enabled" : "Disabled"} •
-                      Created {formatDate(rule.created_at)}
-                    </Typography>
-                  </Box>
-                  {rule.filters.reference_ids && rule.filters.reference_ids.length > 0 && (
-                    <Box sx={{ mb: 1 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                        References
-                      </Typography>
-                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                        {rule.filters.reference_ids.map((refId) => (
-                          <Chip key={refId} label={refId} size="small" variant="outlined" />
-                        ))}
-                      </Box>
-                    </Box>
-                  )}
-                </Box>
-              ))}
-            </Box>
+            <ChronoArbGrid
+              ariaLabel="Alert rules"
+              rows={alertRules}
+              columns={RULE_COLUMNS}
+              actions={ruleActions}
+              height={430}
+            />
           )}
         </Box>
-        <Box sx={{ flex: 1, minWidth: 300 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
             Recent Deliveries
           </Typography>
@@ -335,45 +361,12 @@ export default function AlertsPage() {
               description="Alert deliveries will appear here when rules match opportunities."
             />
           ) : (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              {alertDeliveries.slice(0, 10).map((delivery) => (
-                <Box
-                  key={delivery.id}
-                  sx={{
-                    p: 1.5,
-                    bgcolor: "background.paper",
-                    border: `1px solid`,
-                    borderColor: "divider",
-                    borderRadius: "md",
-                  }}
-                >
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      {delivery.channel}
-                    </Typography>
-                    <Chip
-                      label={delivery.delivery_status}
-                      size="small"
-                      variant="outlined"
-                      sx={{
-                        color:
-                          delivery.delivery_status === "sent"
-                            ? "success.main"
-                            : delivery.delivery_status === "failed"
-                              ? "error.main"
-                              : "text.secondary",
-                      }}
-                    />
-                  </Box>
-                  <Typography variant="body2" sx={{ mb: 0.5, fontSize: "0.875rem" }}>
-                    Opportunity {delivery.opportunity_id} • v{delivery.material_version}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {formatDate(delivery.created_at)}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
+            <ChronoArbGrid
+              ariaLabel="Alert deliveries"
+              rows={alertDeliveries}
+              columns={DELIVERY_COLUMNS}
+              height={430}
+            />
           )}
         </Box>
       </Box>

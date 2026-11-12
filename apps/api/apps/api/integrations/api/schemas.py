@@ -30,5 +30,18 @@ class IntegrationStatusResponse(BaseModel):
 
 class TelegramLinkResponse(BaseModel):
     link_url: str
-    expires_at: datetime
+    expires_at: datetime | None = None
+    status: Literal["disconnected", "pending", "connected"] = "pending"
 
+
+class TelegramConnectRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    chat_id: str = Field(min_length=1, max_length=128)
+
+
+class TelegramTestResponse(BaseModel):
+    delivered: bool
+    chat_id: str
+    provider_message_id: str | None = None
+    error_message: str | None = None

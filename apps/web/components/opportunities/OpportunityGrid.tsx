@@ -1,5 +1,6 @@
 "use client";
 
+import "../../lib/bryntum/license";
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { Model } from "@bryntum/core-business";
@@ -28,15 +29,6 @@ const STATE_LABEL: Record<string, string> = {
   purchased: "Purchased",
   expired: "Expired",
 };
-
-const licenseKey = process.env.NEXT_PUBLIC_BRYNTUM_LICENSE_KEY;
-if (licenseKey) {
-  const bryntumGlobal = globalThis as typeof globalThis & {
-    bryntum?: { licenseKey?: string };
-  };
-  bryntumGlobal.bryntum ??= {};
-  bryntumGlobal.bryntum.licenseKey = licenseKey;
-}
 
 export function compareDecimalStrings(
   left: string | null | undefined,

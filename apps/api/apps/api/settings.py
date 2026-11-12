@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
-from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
@@ -35,10 +35,40 @@ class Settings(BaseSettings):
     auth_token_ttl_seconds: int = 900
     platform_ops_subjects: str = ""
     cors_origins: str = "http://localhost:3000"
+    web_base_url: str = Field(
+        default="http://localhost:3000",
+        validation_alias=AliasChoices(
+            "CHRONOARB_WEB_BASE_URL",
+            "WEB_BASE_URL",
+            "web_base_url",
+        ),
+    )
     integration_encryption_key: SecretStr = SecretStr("")
     channel3_api_key: SecretStr = SecretStr("")
-    telegram_bot_token: SecretStr = SecretStr("")
-    telegram_bot_username: str = ""
+    telegram_bot_token: SecretStr = Field(
+        default=SecretStr(""),
+        validation_alias=AliasChoices(
+            "CHRONOARB_TELEGRAM_BOT_TOKEN",
+            "TELEGRAM_BOT_TOKEN",
+            "telegram_bot_token",
+        ),
+    )
+    telegram_bot_username: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "CHRONOARB_TELEGRAM_BOT_USERNAME",
+            "TELEGRAM_BOT_USERNAME",
+            "telegram_bot_username",
+        ),
+    )
+    telegram_chat_id: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "CHRONOARB_TELEGRAM_CHAT_ID",
+            "TELEGRAM_CHAT_ID",
+            "telegram_chat_id",
+        ),
+    )
     paypal_client_id: str = ""
     paypal_client_secret: SecretStr = SecretStr("")
     paypal_webhook_id: str = ""
@@ -114,6 +144,25 @@ class Settings(BaseSettings):
             normalized_origins.append(f"{parsed.scheme}://{parsed.netloc}")
         return ",".join(normalized_origins)
 
+    @field_validator("web_base_url")
+    @classmethod
+    def validate_web_base_url(cls, value: str) -> str:
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.hostname is None
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError(
+                "Web base URL must be an absolute HTTP(S) URL without credentials, "
+                "query, or fragment"
+            )
+        return value.rstrip("/")
+
     @field_validator(
         "paypal_return_url",
         "paypal_cancel_url",
@@ -169,6 +218,8 @@ class Settings(BaseSettings):
             )
             if any(urlsplit(url).scheme != "https" for url in provider_urls):
                 raise ValueError("Provider URLs must use HTTPS outside local and test")
+            if urlsplit(self.web_base_url).scheme != "https":
+                raise ValueError("Web base URL must use HTTPS outside local and test")
             paypal_host = urlsplit(self.paypal_api_base_url).hostname
             allowed_hosts = {"api-m.sandbox.paypal.com", "api-m.paypal.com"}
             if paypal_host not in allowed_hosts:

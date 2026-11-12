@@ -4,12 +4,10 @@ import React from "react";
 import {
   Box,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   MenuItem,
   Tab,
   Tabs,
@@ -19,8 +17,12 @@ import {
 import { PageHeader } from "../../../components/shell/PageHeader";
 import { PageContainer } from "../../../components/ui/PageContainer";
 import { EmptyState } from "../../../components/ui/EmptyState";
-import { ErrorState } from "../../../components/ui/ErrorState";
 import { LoadingState } from "../../../components/ui/LoadingState";
+import {
+  ChronoArbGrid,
+  type ChronoArbGridAction,
+  type ChronoArbGridColumn,
+} from "../../../components/bryntum/ChronoArbGrid";
 import {
   useSources,
   useUpdateSource,
@@ -38,12 +40,153 @@ import {
 } from "../../../lib/hooks/useAdmin";
 import { formatDate } from "../../../lib/formatters";
 
-const HEALTH_COLOR: Record<string, string> = {
-  unknown: "default",
-  healthy: "success",
-  degraded: "warning",
-  unhealthy: "error",
-};
+const SOURCE_COLUMNS: ChronoArbGridColumn<SourceAdmin>[] = [
+  { field: "display_name", text: "Source", flex: 1, render: (source) => source.display_name },
+  { field: "source_key", text: "Key", width: 150, render: (source) => source.source_key },
+  {
+    field: "adapter_version",
+    text: "Adapter",
+    width: 110,
+    render: (source) => source.adapter_version,
+  },
+  { field: "access_mode", text: "Access", width: 120, render: (source) => source.access_mode },
+  { field: "health_status", text: "Health", width: 110, render: (source) => source.health_status },
+  {
+    field: "last_fetched_at",
+    text: "Last fetched",
+    width: 170,
+    render: (source) =>
+      source.last_fetched_at ? formatDate(source.last_fetched_at) : "—",
+  },
+  {
+    field: "is_enabled",
+    text: "State",
+    width: 100,
+    render: (source) => (source.is_enabled ? "Enabled" : "Disabled"),
+  },
+];
+
+const FLAG_COLUMNS: ChronoArbGridColumn<FeatureFlag>[] = [
+  { field: "key", text: "Flag", width: 190, render: (flag) => flag.key },
+  { field: "description", text: "Description", flex: 1, render: (flag) => flag.description ?? "—" },
+  {
+    field: "enabled",
+    text: "State",
+    width: 100,
+    render: (flag) => (flag.enabled ? "Enabled" : "Disabled"),
+  },
+  { field: "rollout_pct", text: "Rollout", width: 100, render: (flag) => `${flag.rollout_pct}%` },
+  {
+    field: "organization_ids",
+    text: "Organizations",
+    width: 200,
+    render: (flag) => (flag.organization_ids ?? []).join(", ") || "All",
+  },
+  {
+    field: "expires_at",
+    text: "Expires",
+    width: 160,
+    render: (flag) => (flag.expires_at ? formatDate(flag.expires_at) : "—"),
+  },
+  {
+    field: "created_at",
+    text: "Created",
+    width: 160,
+    render: (flag) => formatDate(flag.created_at),
+  },
+];
+
+const AUDIT_COLUMNS: ChronoArbGridColumn<AuditEvent>[] = [
+  { field: "created_at", text: "When", width: 170, render: (event) => formatDate(event.created_at) },
+  { field: "action", text: "Action", width: 220, render: (event) => event.action },
+  {
+    field: "resource_type",
+    text: "Resource",
+    width: 140,
+    render: (event) => event.resource_type,
+  },
+  {
+    field: "resource_id",
+    text: "Resource ID",
+    width: 190,
+    render: (event) => event.resource_id,
+  },
+  { field: "user_id", text: "User", width: 160, render: (event) => event.user_id ?? "—" },
+  {
+    field: "organization_id",
+    text: "Organization",
+    width: 160,
+    render: (event) => event.organization_id ?? "—",
+  },
+  { field: "trace_id", text: "Trace", width: 180, render: (event) => event.trace_id ?? "—" },
+];
+
+const UNMATCHED_COLUMNS: ChronoArbGridColumn<UnmatchedListing>[] = [
+  {
+    field: "title",
+    text: "Listing",
+    flex: 1,
+    render: (listing) => listing.title ?? "Untitled",
+  },
+  {
+    field: "source_key",
+    text: "Source",
+    width: 130,
+    render: (listing) => listing.source_key,
+  },
+  {
+    field: "reference_id",
+    text: "Reference",
+    width: 170,
+    render: (listing) => listing.reference_id,
+  },
+  {
+    field: "match_method",
+    text: "Match method",
+    width: 150,
+    render: (listing) => listing.match_method ?? "—",
+  },
+  {
+    field: "external_url",
+    text: "External URL",
+    width: 260,
+    render: (listing) => listing.external_url ?? "—",
+  },
+  {
+    field: "observation_at",
+    text: "Observed",
+    width: 170,
+    render: (listing) => formatDate(listing.observation_at),
+  },
+];
+
+const DUPLICATE_COLUMNS: ChronoArbGridColumn<DuplicateGroup>[] = [
+  {
+    field: "representative_id",
+    text: "Representative",
+    width: 200,
+    render: (group) => group.representative_id,
+  },
+  { field: "method", text: "Method", width: 150, render: (group) => group.method ?? "—" },
+  {
+    field: "confidence",
+    text: "Confidence",
+    width: 120,
+    render: (group) => group.confidence ?? "—",
+  },
+  {
+    field: "listing_ids",
+    text: "Listings",
+    flex: 1,
+    render: (group) => group.listing_ids.join(", "),
+  },
+  {
+    field: "created_at",
+    text: "Created",
+    width: 170,
+    render: (group) => formatDate(group.created_at),
+  },
+];
 
 export default function AdminPage() {
   const [tab, setTab] = React.useState("sources");
@@ -73,6 +216,49 @@ export default function AdminPage() {
   const [resolveReferenceId, setResolveReferenceId] = React.useState("");
 
   const { data: duplicates, isLoading: duplicatesLoading } = useDuplicateGroups();
+
+  const openSourceToggle = React.useCallback((source: SourceAdmin) => {
+    setToggleSourceId(source.id);
+    setToggleSourceEnabled(source.is_enabled);
+    setSourceToggleOpen(true);
+  }, []);
+
+  const openFlagEditor = React.useCallback((flag: FeatureFlag) => {
+    setEditingFlagId(flag.id);
+    setFlagForm({
+      enabled: flag.enabled,
+      rollout_pct: String(flag.rollout_pct ?? ""),
+      organization_ids: (flag.organization_ids ?? []).join(", "),
+    });
+    setFlagDialogOpen(true);
+  }, []);
+
+  const openResolveDialog = React.useCallback((listing: UnmatchedListing) => {
+    setResolveListingId(listing.id);
+    setResolveReferenceId(listing.reference_id);
+    setResolveDialogOpen(true);
+  }, []);
+
+  const sourceActions = React.useMemo<ChronoArbGridAction<SourceAdmin>[]>(
+    () => [
+      {
+        key: "toggle",
+        label: (source) => (source.is_enabled ? "Disable" : "Enable"),
+        onClick: openSourceToggle,
+      },
+    ],
+    [openSourceToggle],
+  );
+
+  const flagActions = React.useMemo<ChronoArbGridAction<FeatureFlag>[]>(
+    () => [{ key: "edit", label: "Edit", onClick: openFlagEditor }],
+    [openFlagEditor],
+  );
+
+  const unmatchedActions = React.useMemo<ChronoArbGridAction<UnmatchedListing>[]>(
+    () => [{ key: "resolve", label: "Resolve", onClick: openResolveDialog }],
+    [openResolveDialog],
+  );
 
   const isLoading =
     sourcesLoading ||
@@ -165,74 +351,13 @@ export default function AdminPage() {
             {sourceList.length === 0 ? (
               <EmptyState title="No sources" />
             ) : (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {sourceList.map((source) => (
-                  <Box
-                    key={source.id}
-                    sx={{
-                      p: 2,
-                      bgcolor: "background.paper",
-                      border: `1px solid`,
-                      borderColor: "divider",
-                      borderRadius: "md",
-                    }}
-                  >
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "text.primary" }}>
-                          {source.display_name}
-                        </Typography>
-                        <Chip
-                          label={source.source_key}
-                          size="small"
-                          variant="outlined"
-                          color="default"
-                        />
-                      </Box>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => {
-                          setToggleSourceId(source.id);
-                          setToggleSourceEnabled(source.is_enabled);
-                          setSourceToggleOpen(true);
-                        }}
-                      >
-                        {source.is_enabled ? "Disable" : "Enable"}
-                      </Button>
-                    </Box>
-                    <Box sx={{ mb: 1 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                        Adapter Version
-                      </Typography>
-                      <Typography variant="body2">{source.adapter_version}</Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, mt: 1 }}>
-                        Access Mode
-                      </Typography>
-                      <Typography variant="body2">{source.access_mode}</Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, mt: 1 }}>
-                        Health
-                      </Typography>
-                      <Chip
-                        label={source.health_status}
-                        size="small"
-                        variant="outlined"
-                        color={
-                          (HEALTH_COLOR[source.health_status] ?? "default") as any
-                        }
-                      />
-                    </Box>
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                        Last Fetched
-                      </Typography>
-                      <Typography variant="body2">
-                        {source.last_fetched_at ? formatDate(source.last_fetched_at) : "—"}
-                      </Typography>
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
+              <ChronoArbGrid
+                ariaLabel="Data sources"
+                rows={sourceList}
+                columns={SOURCE_COLUMNS}
+                actions={sourceActions}
+                height={460}
+              />
             )}
           </Box>
         )}
@@ -245,89 +370,13 @@ export default function AdminPage() {
             {flagList.length === 0 ? (
               <EmptyState title="No feature flags" />
             ) : (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {flagList.map((flag) => (
-                  <Box
-                    key={flag.id}
-                    sx={{
-                      p: 2,
-                      bgcolor: "background.paper",
-                      border: `1px solid`,
-                      borderColor: "divider",
-                      borderRadius: "md",
-                    }}
-                  >
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "text.primary" }}>
-                          {flag.key}
-                        </Typography>
-                        <Chip
-                          label={flag.enabled ? "Enabled" : "Disabled"}
-                          size="small"
-                          variant="outlined"
-                          color={(flag.enabled ? "success" : "default") as any}
-                        />
-                      </Box>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => {
-                          setEditingFlagId(flag.id);
-                          setFlagForm({
-                            enabled: flag.enabled,
-                            rollout_pct: String(flag.rollout_pct ?? ""),
-                            organization_ids: (flag.organization_ids ?? []).join(", "),
-                          });
-                          setFlagDialogOpen(true);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                    </Box>
-                    {flag.description && (
-                      <Box sx={{ mb: 1 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                          Description
-                        </Typography>
-                        <Typography variant="body2">{flag.description}</Typography>
-                      </Box>
-                    )}
-                    <Box sx={{ mb: 1 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                        Rollout %
-                      </Typography>
-                      <Typography variant="body2">{flag.rollout_pct}%</Typography>
-                    </Box>
-                    {flag.organization_ids && flag.organization_ids.length > 0 && (
-                      <Box sx={{ mb: 1 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                          Organizations
-                        </Typography>
-                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                          {flag.organization_ids.map((orgId) => (
-                            <Chip key={orgId} label={orgId} size="small" variant="outlined" />
-                          ))}
-                        </Box>
-                      </Box>
-                    )}
-                    <Box sx={{ mb: 1 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                        Expires At
-                      </Typography>
-                      <Typography variant="body2">
-                        {flag.expires_at ? formatDate(flag.expires_at) : "—"}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                        Created
-                      </Typography>
-                      <Typography variant="body2">{formatDate(flag.created_at)}</Typography>
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
+              <ChronoArbGrid
+                ariaLabel="Feature flags"
+                rows={flagList}
+                columns={FLAG_COLUMNS}
+                actions={flagActions}
+                height={460}
+              />
             )}
           </Box>
         )}
@@ -340,81 +389,12 @@ export default function AdminPage() {
             {auditList.length === 0 ? (
               <EmptyState title="No audit events" />
             ) : (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {auditList.map((event) => (
-                  <Box
-                    key={event.id}
-                    sx={{
-                      p: 2,
-                      bgcolor: "background.paper",
-                      border: `1px solid`,
-                      borderColor: "divider",
-                      borderRadius: "md",
-                    }}
-                  >
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "text.primary" }}>
-                        {event.action}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatDate(event.created_at)}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ mb: 1 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                        Resource Type
-                      </Typography>
-                      <Typography variant="body2">{event.resource_type}</Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, mt: 1 }}>
-                        Resource ID
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}>
-                        {event.resource_id}
-                      </Typography>
-                    </Box>
-                    {event.user_id && (
-                      <Box sx={{ mb: 1 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                          User ID
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}>
-                          {event.user_id}
-                        </Typography>
-                      </Box>
-                    )}
-                    {event.organization_id && (
-                      <Box sx={{ mb: 1 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                          Organization ID
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}>
-                          {event.organization_id}
-                        </Typography>
-                      </Box>
-                    )}
-                    {event.trace_id && (
-                      <Box sx={{ mb: 1 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                          Trace ID
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}>
-                          {event.trace_id}
-                        </Typography>
-                      </Box>
-                    )}
-                    {event.details && Object.keys(event.details).length > 0 && (
-                      <Box sx={{ mb: 1 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                          Details
-                        </Typography>
-                        <Typography variant="caption" sx={{ fontFamily: "monospace", fontSize: "0.8125rem", whiteSpace: "pre-wrap" }}>
-                          {JSON.stringify(event.details, null, 2)}
-                        </Typography>
-                      </Box>
-                    )}
-                  </Box>
-                ))}
-              </Box>
+              <ChronoArbGrid
+                ariaLabel="Audit events"
+                rows={auditList}
+                columns={AUDIT_COLUMNS}
+                height={500}
+              />
             )}
           </Box>
         )}
@@ -427,73 +407,13 @@ export default function AdminPage() {
             {unmatchedList.length === 0 ? (
               <EmptyState title="No unmatched listings" />
             ) : (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {unmatchedList.map((listing) => (
-                  <Box
-                    key={listing.id}
-                    sx={{
-                      p: 2,
-                      bgcolor: "background.paper",
-                      border: `1px solid`,
-                      borderColor: "divider",
-                      borderRadius: "md",
-                    }}
-                  >
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "text.primary" }}>
-                          {listing.title ?? "Untitled"}
-                        </Typography>
-                        <Chip
-                          label={listing.source_key}
-                          size="small"
-                          variant="outlined"
-                          color="default"
-                        />
-                      </Box>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => {
-                          setResolveListingId(listing.id);
-                          setResolveReferenceId(listing.reference_id);
-                          setResolveDialogOpen(true);
-                        }}
-                      >
-                        Resolve
-                      </Button>
-                    </Box>
-                    <Box sx={{ mb: 1 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                        Reference ID
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}>
-                        {listing.reference_id}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, mt: 1 }}>
-                        Match Method
-                      </Typography>
-                      <Typography variant="body2">{listing.match_method ?? "—"}</Typography>
-                    </Box>
-                    {listing.external_url && (
-                      <Box sx={{ mb: 1 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                          External URL
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}>
-                          {listing.external_url}
-                        </Typography>
-                      </Box>
-                    )}
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                        Observed At
-                      </Typography>
-                      <Typography variant="body2">{formatDate(listing.observation_at)}</Typography>
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
+              <ChronoArbGrid
+                ariaLabel="Unmatched listings"
+                rows={unmatchedList}
+                columns={UNMATCHED_COLUMNS}
+                actions={unmatchedActions}
+                height={460}
+              />
             )}
           </Box>
         )}
@@ -506,51 +426,12 @@ export default function AdminPage() {
             {duplicateList.length === 0 ? (
               <EmptyState title="No duplicate groups" />
             ) : (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {duplicateList.map((group) => (
-                  <Box
-                    key={group.id}
-                    sx={{
-                      p: 2,
-                      bgcolor: "background.paper",
-                      border: `1px solid`,
-                      borderColor: "divider",
-                      borderRadius: "md",
-                    }}
-                  >
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "text.primary" }}>
-                        Duplicate Group
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {group.listing_ids.length} listings
-                      </Typography>
-                    </Box>
-                    <Box sx={{ mb: 1 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                        Representative ID
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: "0.875rem" }}>
-                        {group.representative_id}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, mt: 1 }}>
-                        Method
-                      </Typography>
-                      <Typography variant="body2">{group.method ?? "—"}</Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, mt: 1 }}>
-                        Confidence
-                      </Typography>
-                      <Typography variant="body2">{group.confidence ?? "—"}</Typography>
-                    </Box>
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
-                        Created
-                      </Typography>
-                      <Typography variant="body2">{formatDate(group.created_at)}</Typography>
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
+              <ChronoArbGrid
+                ariaLabel="Duplicate groups"
+                rows={duplicateList}
+                columns={DUPLICATE_COLUMNS}
+                height={420}
+              />
             )}
           </Box>
         )}

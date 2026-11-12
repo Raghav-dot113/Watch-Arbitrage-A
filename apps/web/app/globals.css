@@ -19,3 +19,37 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* In-cell action buttons used by the shared Bryntum grid wrapper. */
+.chronoarb-grid-action {
+  margin: 0 4px;
+  padding: 2px 9px;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  background: transparent;
+  color: #e2e8f0;
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.chronoarb-grid-action:hover {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.chronoarb-grid-action.is-danger {
+  border-color: #7f1d1d;
+  color: #fca5a5;
+}
+
+.chronoarb-grid-action.is-danger:hover {
+  border-color: #ef4444;
+  color: #fecaca;
+}
+
+.chronoarb-bryntum-grid .b-grid-cell {
+  font-size: 0.8125rem;
+}
+

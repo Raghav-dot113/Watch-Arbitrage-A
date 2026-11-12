@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from apps.api.alerts.infrastructure.models import AlertDelivery, AlertRule
 from apps.api.infrastructure.repository import TenantRepository
-from apps.api.pagination import Page, decode_cursor, encode_cursor
-from sqlalchemy import and_, or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -78,22 +77,4 @@ class AlertDeliveryRepository(TenantRepository[AlertDelivery]):
         result = await self.session.execute(
             query.order_by(AlertDelivery.created_at.desc(), AlertDelivery.id.desc()).limit(limit)
         )
-        if cursor is not None:
-            cursor_created_at, cursor_id = decode_cursor(cursor)
-            query = query.where(
-                or_(
-                    AlertRule.created_at < cursor_created_at,
-                    and_(
-                        AlertRule.created_at == cursor_created_at,
-                        AlertRule.id < cursor_id,
-                    ),
-                )
-            )
-        result = await self.session.execute(query.limit(limit + 1))
-        rows = list(result.scalars().all())
-        items = rows[:limit]
-        has_more = len(rows) > limit
-        next_cursor = None
-        if has_more and items:
-            next_cursor = encode_cursor(items[-1].created_at, items[-1].id)
-        return Page(items=items, next_cursor=next_cursor, has_more=has_more)
+        return list(result.scalars().all())

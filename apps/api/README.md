@@ -74,3 +74,42 @@ $response.data.access_token
 
 The response should contain the seeded dealer, the `demo` organization, role
 `dealer`, and an access token.
+
+## Telegram alerts
+
+Alert delivery needs a bot token and a destination chat. Set these in the
+repository-root `.env`:
+
+```dotenv
+CHRONOARB_TELEGRAM_BOT_TOKEN=<token from @BotFather>
+CHRONOARB_TELEGRAM_CHAT_ID=<numeric chat ID or @channelname>
+CHRONOARB_TELEGRAM_BOT_USERNAME=<bot username, for the linked-account flow>
+CHRONOARB_WEB_BASE_URL=http://localhost:3000
+```
+
+The settings loader also accepts bare `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`
+environment variables. To find a chat ID, message the bot once and open
+`https://api.telegram.org/bot<TOKEN>/getUpdates`; the `chat.id` field is the value.
+
+Notifications are sent by a dispatcher process, separate from the API. It drains
+pending `alert_deliveries` rows whose channel is `telegram` and consumes
+`notification.test_requested` outbox events (written by the alert-rule test
+route):
+
+```powershell
+# One pass (useful for smoke tests or cron)
+python -m apps.api.notifications --once
+
+# Keep running while the API is up
+python -m apps.api.notifications --interval 15
+
+# Verify the bot token and chat ID with a single test message
+python -m apps.api.notifications --test-message
+```
+
+To verify end-to-end from the web app, open **Alerts**, pick a rule whose channels
+include `telegram`, and choose **Test**. The dispatcher must be running for the
+message to arrive. If neither a user-linked Telegram chat nor
+`CHRONOARB_TELEGRAM_CHAT_ID` exists, the dispatcher records the delivery as
+`suppressed` rather than retrying forever.
+

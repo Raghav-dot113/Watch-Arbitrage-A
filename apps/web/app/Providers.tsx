@@ -1,5 +1,6 @@
 'use client';
 
+import '../lib/bryntum/license';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { theme } from '../theme/create-chronoarb-theme';

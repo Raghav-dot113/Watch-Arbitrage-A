@@ -2,6 +2,11 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import ActivityPage from "./page";
 
+vi.mock("../../../components/bryntum/ChronoArbGrid", async () => {
+  const { MockChronoArbGrid } = await import("../../../test-utils/ChronoArbGridMock");
+  return { ChronoArbGrid: MockChronoArbGrid };
+});
+
 const mockUseActivity = vi.fn();
 const mockUseTradeOutcomes = vi.fn();
 

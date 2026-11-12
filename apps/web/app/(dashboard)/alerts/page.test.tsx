@@ -2,6 +2,11 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import AlertsPage from "./page";
 
+vi.mock("../../../components/bryntum/ChronoArbGrid", async () => {
+  const { MockChronoArbGrid } = await import("../../../test-utils/ChronoArbGridMock");
+  return { ChronoArbGrid: MockChronoArbGrid };
+});
+
 const mockUseAlertRules = vi.fn();
 const mockUseAlertDeliveries = vi.fn();
 const mockCreateResult = {
@@ -93,7 +98,7 @@ describe("AlertsPage", () => {
   it("renders alert rules with channels and status", () => {
     render(<AlertsPage />);
     expect(screen.getByText("High profit watches")).toBeInTheDocument();
-    expect(screen.getByText(/In-app/)).toBeInTheDocument();
+    expect(screen.getAllByText(/In-app/).length).toBeGreaterThan(0);
     expect(screen.getByText(/60 min/)).toBeInTheDocument();
     expect(screen.getByText(/Enabled/)).toBeInTheDocument();
   });

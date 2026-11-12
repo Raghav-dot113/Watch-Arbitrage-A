@@ -1,6 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import AdminPage from "./page";
+
+vi.mock("../../../components/bryntum/ChronoArbGrid", async () => {
+  const { MockChronoArbGrid } = await import("../../../test-utils/ChronoArbGridMock");
+  return { ChronoArbGrid: MockChronoArbGrid };
+});
 
 const mockUseSources = vi.fn();
 const mockUseUpdateSource = vi.fn(() => ({
@@ -159,13 +164,16 @@ describe("AdminPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /disable/i }));
 
-    expect(screen.getByText("Disable Source")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /disable/i }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Disable Source")).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: /disable/i }));
 
-    expect(mutateAsync).toHaveBeenCalledWith({
-      sourceId: "src_1",
-      isEnabled: false,
-    });
+    await waitFor(() =>
+      expect(mutateAsync).toHaveBeenCalledWith({
+        sourceId: "src_1",
+        isEnabled: false,
+      }),
+    );
   });
 
   it("renders feature flags tab", () => {
@@ -206,7 +214,9 @@ describe("AdminPage", () => {
   it("renders duplicate groups tab", () => {
     render(<AdminPage />);
     fireEvent.click(screen.getByRole("tab", { name: /duplicate groups/i }));
-    expect(screen.getByText("Duplicate Group")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Duplicate Groups" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("listing_1")).toBeInTheDocument();
   });
 

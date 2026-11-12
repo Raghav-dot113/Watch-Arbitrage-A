@@ -61,12 +61,79 @@ class IntegrationService:
             if status == "pending" and (expires_at is None or expires_at <= datetime.now(UTC)):
                 status = "disconnected"
                 expires_at = None
+        elif settings.telegram_chat_id:
+            status = "connected"
         devices = await self.devices.list_for_user(organization_id, user_id)
         return {
             "telegram_status": status,
             "telegram_link_expires_at": expires_at,
             "push_devices": devices,
         }
+
+    async def connect_telegram_chat(
+        self,
+        organization_id: str,
+        user_id: str,
+        chat_id: str,
+        *,
+        trace_id: str,
+    ) -> ProviderIntegration:
+        clean_chat_id = str(chat_id).strip()
+        if not clean_chat_id:
+            raise ValueError("chat_id cannot be empty")
+        integration = await self.integrations.get_for_update(organization_id, user_id, "telegram")
+        now = datetime.now(UTC)
+        if integration is None:
+            integration = ProviderIntegration(
+                id=generate_ulid("int"),
+                organization_id=organization_id,
+                user_id=user_id,
+                provider="telegram",
+                status="connected",
+                external_id_ciphertext=encrypt_provider_secret(clean_chat_id),
+                link_token_hash=None,
+                link_expires_at=None,
+            )
+            self.session.add(integration)
+        else:
+            integration.status = "connected"
+            integration.external_id_ciphertext = encrypt_provider_secret(clean_chat_id)
+            integration.link_token_hash = None
+            integration.link_expires_at = None
+            integration.updated_at = now
+
+        await record_audit_event(
+            self.session,
+            organization_id=organization_id,
+            user_id=user_id,
+            action="integration.telegram_linked",
+            resource_type="provider_integration",
+            resource_id=integration.id,
+            trace_id=trace_id,
+        )
+        await self.session.commit()
+        return integration
+
+    async def get_effective_telegram_chat_id(
+        self,
+        organization_id: str,
+        user_id: str,
+    ) -> str | None:
+        integration = await self.integrations.get_for_user(organization_id, user_id, "telegram")
+        if (
+            integration is not None
+            and integration.status == "connected"
+            and integration.external_id_ciphertext
+        ):
+            from apps.api.integrations.application.crypto import decrypt_provider_secret
+
+            try:
+                return decrypt_provider_secret(integration.external_id_ciphertext)
+            except Exception:
+                pass
+        if settings.telegram_chat_id:
+            return settings.telegram_chat_id
+        return None
 
     async def start_telegram_link(
         self,

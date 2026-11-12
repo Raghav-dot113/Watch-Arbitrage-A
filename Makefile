@@ -18,7 +18,7 @@ MIGRATE_TMP  := /tmp/chronoarb_migrate.sql
 export CHRONOARB_DATABASE_URL = $(PG_URL)
 export PATH := $(shell pwd)/.venv/bin:$(PATH)
 
-.PHONY: db-migrate db-reset db-rollback db-status db-revision openapi-export openapi-check test-api test-domain lint format-check typecheck import-lint check
+.PHONY: db-migrate db-reset db-rollback db-status db-revision openapi-export openapi-check test-api test-domain lint format-check typecheck import-lint notify check
 
 PYTHON ?= python
 
@@ -33,6 +33,10 @@ test-api:
 
 test-domain:
 	@$(PYTHON) -m pytest packages/domain-python/tests
+
+## Deliver pending Telegram alerts once (use `python -m apps.api.notifications` to loop)
+notify:
+	@$(PYTHON) -m apps.api.notifications --once
 
 lint:
 	@ruff check apps/api/apps/api apps/api/tests packages/domain-python/chronoarb packages/domain-python/tests packages/source-adapters apps/worker
