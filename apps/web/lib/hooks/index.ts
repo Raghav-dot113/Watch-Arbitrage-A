@@ -33,6 +33,8 @@ export type {
 } from "./useSettings";
 export { useCreateOrganization } from "./useOnboarding";
 export type { OrganizationCreateRequest } from "./useOnboarding";
+export { useChannel3Search } from "./useChannel3";
+export type { Channel3SearchRequest, Channel3SearchResponse, Channel3Product, Channel3Offer, Channel3Price, Channel3Brand, Channel3Image } from "./useChannel3";
 export {
   useSources,
   useUpdateSource,

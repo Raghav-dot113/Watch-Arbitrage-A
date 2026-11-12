@@ -383,3 +383,55 @@ export interface DuplicateGroup {
   listing_ids: string[];
   created_at: string;
 }
+
+export interface Channel3Price {
+  amount: string;
+  currency: string;
+}
+
+export interface Channel3Brand {
+  id: string;
+  name: string;
+}
+
+export interface Channel3Image {
+  url: string;
+  cleaned_url: string | null;
+  is_main_image: boolean | null;
+  shot_type: string | null;
+  alt_text: string | null;
+}
+
+export interface Channel3Offer {
+  url: string;
+  domain: string;
+  price: Channel3Price;
+  availability: string;
+  condition: string | null;
+  max_commission_rate: string | null;
+}
+
+export interface Channel3Product {
+  id: string;
+  title: string;
+  description: string | null;
+  brands: Channel3Brand[];
+  images: Channel3Image[];
+  category: Record<string, unknown> | null;
+  materials: string[] | null;
+  key_features: string[] | null;
+  offers: Channel3Offer[];
+  structured_attributes: Record<string, unknown>;
+}
+
+export interface Channel3SearchResponse {
+  products: Channel3Product[];
+  next_page_token: string | null;
+  fetched_at: string;
+}
+
+export interface Channel3SearchRequest {
+  query: string;
+  limit: number;
+  page_token?: string;
+}

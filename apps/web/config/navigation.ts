@@ -4,6 +4,7 @@ import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsAc
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 
 export interface NavigationItem {
   label: string;
@@ -22,6 +23,12 @@ export const navigationConfig: NavigationItem[] = [
     label: 'Opportunities',
     href: '/opportunities',
     icon: RadarOutlinedIcon,
+    matchRule: 'prefix',
+  },
+  {
+    label: 'Search',
+    href: '/search',
+    icon: SearchOutlinedIcon,
     matchRule: 'prefix',
   },
   {

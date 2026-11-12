@@ -30,6 +30,8 @@ export { getIntegrationStatus, linkTelegram, unlinkTelegram, registerPushDevice,
 export type { IntegrationStatusResponse, TelegramLinkResponse, PushDeviceResponse } from "./types";
 export { listOpportunities, getOpportunity, recordOpportunityFeedback, recordTradeOutcome } from "./opportunities";
 export type { ListOpportunitiesParams } from "./opportunities";
+export { searchChannel3 } from "./channel3";
+export type { Channel3SearchRequest, Channel3SearchResponse, Channel3Product, Channel3Offer, Channel3Price, Channel3Brand, Channel3Image } from "./types";
 export { getMe, createOrganization, listOrganizations } from "./identity";
 export type { MeResponse, OrganizationCreateRequest } from "./types";
 export { getHealth, getReady } from "./health";

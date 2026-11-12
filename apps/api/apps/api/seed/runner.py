@@ -14,6 +14,7 @@ from apps.api.catalog.infrastructure.models import Brand, Reference, Source
 from apps.api.feedback.infrastructure.models import Feedback, TradeOutcome
 from apps.api.identity.infrastructure.models import Membership, Organization, User
 from apps.api.infrastructure.database import async_session
+from apps.api.infrastructure.models import Base
 from apps.api.listings.infrastructure.models import (
     NormalizedListing,
     ParsedListing,
@@ -817,6 +818,10 @@ async def seed_database(session: AsyncSession | None = None) -> dict[str, int]:
 
 
 async def _seed_within_session(session: AsyncSession, counts: dict[str, int]) -> dict[str, int]:
+    # Create all tables if they don't exist
+    async with session.bind.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
     org_map = await _seed_organizations(session, SEED_ORGANIZATIONS)
     counts["organizations"] = len(org_map)
 
