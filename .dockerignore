@@ -2,6 +2,7 @@ node_modules/
 .pnpm-store/
 dist/
 .next/
+build/apimatic/
 __pycache__/
 *.pyc
 .pytest_cache/

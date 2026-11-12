@@ -33,9 +33,20 @@ from apps.api.infrastructure.database import get_db
 from apps.api.settings import settings
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/identity", tags=["identity"])
+
+
+def _is_missing_table_error(error: DBAPIError) -> bool:
+    original = error.orig
+    if (
+        getattr(original, "sqlstate", None) == "42P01"
+        or getattr(original, "pgcode", None) == "42P01"
+    ):
+        return True
+    return "no such table" in str(original).lower()
 
 
 @router.post(
@@ -52,14 +63,26 @@ async def create_development_token(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     normalized_email = payload.email.strip().casefold()
-    result = await session.execute(
-        select(User, Membership, Organization)
-        .join(Membership, Membership.user_id == User.id)
-        .join(Organization, Organization.id == Membership.organization_id)
-        .where(func.lower(User.email) == normalized_email)
-        .order_by(Organization.slug)
-        .limit(1)
-    )
+    try:
+        result = await session.execute(
+            select(User, Membership, Organization)
+            .join(Membership, Membership.user_id == User.id)
+            .join(Organization, Organization.id == Membership.organization_id)
+            .where(func.lower(User.email) == normalized_email)
+            .order_by(Organization.slug)
+            .limit(1)
+        )
+    except DBAPIError as error:
+        if not _is_missing_table_error(error):
+            raise
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Database schema is not initialized. Run the database setup and seed steps "
+                "before requesting a development token."
+            ),
+        ) from error
+
     row = result.first()
     if row is None:
         raise HTTPException(

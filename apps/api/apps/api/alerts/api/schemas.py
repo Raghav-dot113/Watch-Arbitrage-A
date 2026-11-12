@@ -46,7 +46,24 @@ class AlertRuleFilters(BaseModel):
 
 
 class AlertRuleCreateRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "name": "High-value opportunities",
+                    "filters": {
+                        "min_profit": "250.00",
+                        "conditions": ["excellent", "very_good"],
+                    },
+                    "channels": ["in_app", "push"],
+                    "cooldown_minutes": 60,
+                    "is_enabled": True,
+                }
+            ]
+        },
+    )
 
     name: str = Field(min_length=1, max_length=120)
     filters: AlertRuleFilters = Field(default_factory=AlertRuleFilters)
@@ -63,7 +80,28 @@ class AlertRuleCreateRequest(BaseModel):
 
 
 class AlertRuleResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "alert_rule_demo_001",
+                    "organization_id": "org_demo",
+                    "created_by": "user_demo_001",
+                    "name": "High-value opportunities",
+                    "filters": {
+                        "min_profit": "250.00",
+                        "conditions": ["excellent", "very_good"],
+                    },
+                    "channels": ["in_app", "push"],
+                    "cooldown_minutes": 60,
+                    "is_enabled": True,
+                    "created_at": "2026-10-25T10:00:00Z",
+                    "updated_at": "2026-10-25T10:00:00Z",
+                }
+            ]
+        },
+    )
 
     id: str
     organization_id: str

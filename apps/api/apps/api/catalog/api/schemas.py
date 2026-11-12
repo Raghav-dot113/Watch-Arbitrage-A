@@ -12,6 +12,17 @@ class Channel3SearchRequest(BaseModel):
 
 
 class WatchListCreateRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "name": "Steel sports watches",
+                    "reference_ids": ["ref_rolex_submariner_126610ln"],
+                }
+            ]
+        }
+    )
+
     name: str = Field(min_length=1, max_length=200)
     reference_ids: list[str] = Field(default_factory=list, max_length=500)
 
@@ -65,7 +76,27 @@ class ReferencePageResponse(BaseModel):
 
 
 class WatchListResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "watch_list_demo_001",
+                    "organization_id": "org_demo",
+                    "name": "Steel sports watches",
+                    "created_at": "2026-10-25T10:00:00Z",
+                    "entries": [
+                        {
+                            "id": "watch_entry_demo_001",
+                            "watch_list_id": "watch_list_demo_001",
+                            "reference_id": "ref_rolex_submariner_126610ln",
+                            "created_at": "2026-10-25T10:00:00Z",
+                        }
+                    ],
+                }
+            ]
+        },
+    )
 
     id: str
     organization_id: str

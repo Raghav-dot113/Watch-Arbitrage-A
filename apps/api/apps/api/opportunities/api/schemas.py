@@ -63,7 +63,83 @@ class OpportunityValuationResponse(BaseModel):
 
 
 class OpportunityFeedItem(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "opportunity_demo_001",
+                    "organization_id": "org_demo",
+                    "listing_id": "listing_demo_001",
+                    "valuation_id": "valuation_demo_001",
+                    "material_version": 1,
+                    "score": "0.92",
+                    "state": "published",
+                    "positive_factors": ["price_below_expected"],
+                    "negative_factors": [],
+                    "published_at": "2026-10-25T09:00:00Z",
+                    "state_changed_at": "2026-10-25T09:00:00Z",
+                    "created_at": "2026-10-25T09:00:00Z",
+                    "data_age_seconds": 900,
+                    "confidence": "0.87",
+                    "valuation_version": "v1",
+                    "cost_assumptions_version": "costs-2026-01",
+                    "my_decision": None,
+                    "listing": {
+                        "id": "listing_demo_001",
+                        "title": "Example automatic watch",
+                        "description": "Example listing details.",
+                        "external_url": "https://example.com/listing/001",
+                        "listing_price": "1200.00",
+                        "listing_price_currency": "USD",
+                        "normalized_price": "1200.00",
+                        "normalized_currency": "USD",
+                        "condition": "very_good",
+                        "set_status": "box_and_papers",
+                        "seller_geography": "US",
+                        "listed_at": "2026-10-25T08:45:00Z",
+                        "reference_id": "ref_demo_001",
+                        "brand_name": "Example",
+                        "ref_code": "EX-001",
+                        "model_name": "Example Automatic",
+                        "generation": "1",
+                        "reference_attributes": {},
+                        "parsed_attributes": {},
+                        "source_key": "approved_source",
+                        "source_display_name": "Approved source",
+                        "match_confidence": "0.96",
+                        "match_method": "reference_match_v1",
+                        "match_features": {},
+                        "fx_rate": "1.00",
+                        "fx_source": "example_fx",
+                        "fx_date": "2026-10-25",
+                    },
+                    "valuation": {
+                        "id": "valuation_demo_001",
+                        "listing_id": "listing_demo_001",
+                        "model_version": "valuation-v1",
+                        "config_version": "config-2026-01",
+                        "cost_assumptions_version": "costs-2026-01",
+                        "expected_exit_price": "1500.00",
+                        "exit_price_currency": "USD",
+                        "all_in_acquisition": "1250.00",
+                        "expected_net_resale": "1450.00",
+                        "expected_net_profit": "200.00",
+                        "roi": "0.16",
+                        "low_estimate": "1400.00",
+                        "high_estimate": "1600.00",
+                        "confidence": "0.87",
+                        "comparable_count": 12,
+                        "sample_dispersion": "0.08",
+                        "cost_breakdown": {},
+                        "adjustment_details": {},
+                        "risk_reserve_details": {},
+                        "created_at": "2026-10-25T09:00:00Z",
+                    },
+                }
+            ]
+        },
+    )
 
     id: str
     organization_id: str
