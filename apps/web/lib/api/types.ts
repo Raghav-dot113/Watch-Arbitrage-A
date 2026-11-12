@@ -430,10 +430,14 @@ export interface Channel3SearchResponse {
   products: Channel3Product[];
   next_page_token: string | null;
   fetched_at: string;
+  filtered_out_count: number;
+  provider_pages_fetched: number;
 }
 
 export interface Channel3SearchRequest {
   query: string;
   limit: number;
   page_token?: string;
+  condition: "used" | "new" | "all";
+  in_stock_only: boolean;
 }

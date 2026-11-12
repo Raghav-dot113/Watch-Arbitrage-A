@@ -326,10 +326,14 @@ async def test_channel3_watch_search_returns_authenticated_catalog_results(
         query: str,
         limit: int,
         page_token: str | None,
+        condition: str = "used",
+        in_stock_only: bool = False,
     ) -> Channel3SearchResponse:
         assert query == "Rolex Submariner"
         assert limit == 5
         assert page_token is None
+        assert condition == "used"
+        assert in_stock_only is False
         return Channel3SearchResponse(
             products=[
                 Channel3Product(
@@ -351,6 +355,8 @@ async def test_channel3_watch_search_returns_authenticated_catalog_results(
             ],
             next_page_token=None,
             fetched_at=datetime(2026, 11, 11, tzinfo=UTC),
+            filtered_out_count=0,
+            provider_pages_fetched=1,
         )
 
     monkeypatch.setattr(Channel3Client, "search", fake_search)
@@ -360,13 +366,16 @@ async def test_channel3_watch_search_returns_authenticated_catalog_results(
     )
 
     assert response.status_code == 200
-    product = response.json()["data"]["products"][0]
+    data = response.json()["data"]
+    product = data["products"][0]
     assert product["title"] == "Submariner"
     assert product["offers"][0]["price"] == {
         "amount": "12950.50",
         "currency": "USD",
     }
-    assert response.json()["data"]["fetched_at"] == "2026-11-11T00:00:00Z"
+    assert data["fetched_at"] == "2026-11-11T00:00:00Z"
+    assert data["filtered_out_count"] == 0
+    assert data["provider_pages_fetched"] == 1
 
 
 async def test_viewer_cannot_mutate_watch_lists(

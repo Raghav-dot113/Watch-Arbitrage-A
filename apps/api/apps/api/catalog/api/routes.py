@@ -69,6 +69,8 @@ async def search_channel3_watches(
             query=payload.query,
             limit=payload.limit,
             page_token=payload.page_token,
+            condition=payload.condition,
+            in_stock_only=payload.in_stock_only,
         )
     except Channel3NotConfiguredError as error:
         raise HTTPException(

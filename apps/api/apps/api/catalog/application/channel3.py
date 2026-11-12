@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Protocol
+from typing import Literal, Protocol
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+
+Channel3Condition = Literal["used", "new", "all"]
 
 
 class _Channel3Model(BaseModel):
@@ -56,6 +58,8 @@ class Channel3SearchResponse(_Channel3Model):
     products: list[Channel3Product]
     next_page_token: str | None = None
     fetched_at: datetime
+    filtered_out_count: int
+    provider_pages_fetched: int
 
 
 class Channel3SearchGateway(Protocol):
@@ -65,6 +69,8 @@ class Channel3SearchGateway(Protocol):
         query: str,
         limit: int,
         page_token: str | None,
+        condition: Channel3Condition = "used",
+        in_stock_only: bool = False,
     ) -> Channel3SearchResponse: ...
 
 

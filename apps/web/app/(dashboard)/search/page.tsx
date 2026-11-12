@@ -6,11 +6,15 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
+  FormControlLabel,
   Grid,
   IconButton,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
@@ -31,6 +35,23 @@ import {
 interface SearchFormState {
   query: string;
   limit: number;
+  condition: Channel3SearchRequest["condition"];
+  in_stock_only: boolean;
+}
+
+const DEFAULT_CONDITION: Channel3SearchRequest["condition"] = "used";
+
+function getConditionLabel(condition: string | null): string {
+  if (condition === "used") return "Pre-owned";
+  if (condition === "new") return "New";
+  return "Unknown";
+}
+
+function getProductConditionLabel(product: Channel3Product): string {
+  const conditions = new Set(product.offers.map((offer) => offer.condition));
+  if (conditions.size === 0) return "Unknown";
+  if (conditions.size > 1) return "Mixed";
+  return getConditionLabel(conditions.values().next().value ?? null);
 }
 
 const PRESET_SEARCHES = [
@@ -43,7 +64,12 @@ const PRESET_SEARCHES = [
 ];
 
 export default function SearchPage() {
-  const [formState, setFormState] = useState<SearchFormState>({ query: "", limit: 20 });
+  const [formState, setFormState] = useState<SearchFormState>({
+    query: "",
+    limit: 20,
+    condition: DEFAULT_CONDITION,
+    in_stock_only: false,
+  });
   const [searchParams, setSearchParams] = useState<Channel3SearchRequest | null>(null);
   const [lastQuery, setLastQuery] = useState<string>("");
 
@@ -52,7 +78,12 @@ export default function SearchPage() {
   const executeSearch = (queryText: string, limitNum = formState.limit) => {
     const trimmed = queryText.trim();
     if (trimmed.length < 2) return;
-    setSearchParams({ query: trimmed, limit: limitNum });
+    setSearchParams({
+      query: trimmed,
+      limit: limitNum,
+      condition: formState.condition,
+      in_stock_only: formState.in_stock_only,
+    });
     setLastQuery(trimmed);
   };
 
@@ -67,7 +98,12 @@ export default function SearchPage() {
   };
 
   const handleClear = () => {
-    setFormState({ query: "", limit: 20 });
+    setFormState({
+      query: "",
+      limit: 20,
+      condition: DEFAULT_CONDITION,
+      in_stock_only: false,
+    });
     setSearchParams(null);
     setLastQuery("");
   };
@@ -162,6 +198,38 @@ export default function SearchPage() {
                   },
                 }}
               />
+
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={formState.condition}
+                  aria-label="Condition"
+                  onChange={(_, condition: SearchFormState["condition"] | null) => {
+                    if (condition) {
+                      setFormState((current) => ({ ...current, condition }));
+                    }
+                  }}
+                >
+                  <ToggleButton value="used">Pre-owned</ToggleButton>
+                  <ToggleButton value="new">New</ToggleButton>
+                  <ToggleButton value="all">All</ToggleButton>
+                </ToggleButtonGroup>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={formState.in_stock_only}
+                      onChange={(event) =>
+                        setFormState((current) => ({
+                          ...current,
+                          in_stock_only: event.target.checked,
+                        }))
+                      }
+                    />
+                  }
+                  label="In stock only"
+                />
+              </Box>
 
               <TextField
                 type="number"
@@ -269,11 +337,21 @@ export default function SearchPage() {
         </Box>
       )}
 
+      {!isLoading && !isError && searchParams && (data?.filtered_out_count ?? 0) > 0 && (
+        <Typography variant="caption" sx={{ color: "#64748B", display: "block", mb: 1 }}>
+          {data?.filtered_out_count} offer{data?.filtered_out_count !== 1 ? "s" : ""} hidden by the active filters.
+        </Typography>
+      )}
+
       {/* Empty State */}
       {!isLoading && !isError && products.length === 0 && searchParams && (
         <EmptyState
           title="No watches found"
-          description={`No results found for "${lastQuery}". Try a different keyword like "Cartier Tank" or "Rolex".`}
+          description={
+            searchParams.condition === "all"
+              ? `No results for "${lastQuery}" across all conditions. Try a different keyword like "Cartier Tank" or "Rolex".`
+              : `No ${searchParams.condition === "used" ? "pre-owned" : "new"} results for "${lastQuery}". Try a different keyword like "Cartier Tank" or "Rolex".`
+          }
         />
       )}
 
@@ -439,6 +517,14 @@ function ProductCard({
           {product.title}
         </Typography>
 
+        <Chip
+          label={getProductConditionLabel(product)}
+          size="small"
+          variant="outlined"
+          aria-label={`Product condition: ${getProductConditionLabel(product)}`}
+          sx={{ alignSelf: "flex-start", mb: 1.5 }}
+        />
+
         {/* Description snippet */}
         {product.description && (
           <Typography
@@ -456,6 +542,28 @@ function ProductCard({
           >
             {product.description}
           </Typography>
+        )}
+
+        {product.offers.length > 0 && (
+          <Box role="list" aria-label="Offers" sx={{ display: "grid", gap: 0.75, mb: 2 }}>
+            {product.offers.map((offer) => (
+              <Box
+                role="listitem"
+                key={offer.url}
+                sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}
+              >
+                <Typography variant="caption" sx={{ color: "#64748B", flex: 1 }} noWrap>
+                  {offer.domain}
+                </Typography>
+                <Chip
+                  label={getConditionLabel(offer.condition)}
+                  size="small"
+                  variant="outlined"
+                  aria-label={`${getConditionLabel(offer.condition)} offer condition`}
+                />
+              </Box>
+            ))}
+          </Box>
         )}
 
         {/* Price Row */}

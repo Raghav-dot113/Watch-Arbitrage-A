@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from apps.api.catalog.application.channel3 import Channel3Condition
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -9,6 +10,8 @@ class Channel3SearchRequest(BaseModel):
     query: str = Field(min_length=2, max_length=256)
     limit: int = Field(default=20, ge=1, le=50)
     page_token: str | None = Field(default=None, min_length=1, max_length=2048)
+    condition: Channel3Condition = "used"
+    in_stock_only: bool = False
 
 
 class WatchListCreateRequest(BaseModel):

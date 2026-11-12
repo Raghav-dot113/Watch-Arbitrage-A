@@ -1,0 +1,44 @@
+{
+  "products": [
+    {
+      "id": "product-1",
+      "title": "Submariner Date",
+      "description": "Stainless steel automatic watch",
+      "brands": [
+        {
+          "id": "brand-rolex",
+          "name": "Rolex"
+        }
+      ],
+      "images": [
+        {
+          "url": "https://images.example.test/submariner.jpg",
+          "cleaned_url": null,
+          "is_main_image": true,
+          "shot_type": null,
+          "alt_text": "Rolex Submariner"
+        }
+      ],
+      "offers": [
+        {
+          "url": "https://retailer.example.test/submariner",
+          "domain": "retailer.example.test",
+          "price": {
+            "price": 12950.5,
+            "compare_at_price": 15000,
+            "currency": "USD"
+          },
+          "availability": "InStock",
+          "condition": "used",
+          "max_commission_rate": 0.05
+        }
+      ],
+      "structured_attributes": {}
+    },
+    {
+      "id": "product-2",
+      "title": "Watch with sparse provider fields"
+    }
+  ],
+  "next_page_token": null
+}
