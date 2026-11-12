@@ -1,4 +1,4 @@
-﻿# Render Blueprint for the ChronoArb hackathon deployment.
+# Render Blueprint for the ChronoArb hackathon deployment.
 #
 # This blueprint intentionally runs with authentication disabled:
 #   CHRONOARB_AUTH_MODE=disabled
@@ -31,7 +31,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.13.0
       - key: CHRONOARB_ENVIRONMENT
-        value: production
+        value: staging
       - key: CHRONOARB_AUTH_MODE
         value: disabled
       - key: CHRONOARB_DEMO_USER_EMAIL
