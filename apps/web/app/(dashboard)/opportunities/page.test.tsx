@@ -1,56 +1,40 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import type { ReactNode } from "react";
 import OpportunitiesPage from "./page";
 
 const mockPush = vi.fn();
 const mockUseOpportunities = vi.fn();
 
-type GridRow = Record<string, unknown> & { id: string };
-type GridColumn = {
-  field?: string;
-  headerName?: string;
-  cellRenderer?: (params: { value: unknown; data: GridRow }) => ReactNode;
-  valueFormatter?: (params: { value: unknown; data: GridRow }) => ReactNode;
-};
-
-vi.mock("ag-grid-react", () => ({
-  AgGridReact: ({
-    rowData = [],
-    columnDefs = [],
-    onRowClicked,
-  }: {
-    rowData?: GridRow[];
-    columnDefs?: GridColumn[];
-    onRowClicked?: (event: { data: GridRow }) => void;
-  }) => (
-    <div role="grid" aria-label="Opportunity feed">
-      {rowData.map((row, index) => (
-        <div
-          key={row.id}
-          role="row"
-          data-testid={`opportunity-row-${index}`}
-          onClick={() => onRowClicked?.({ data: row })}
-        >
-          {columnDefs.map((column) => {
-            const value = column.field ? row[column.field] : null;
-            const params = { value, data: row };
-            let output: ReactNode = value == null ? "—" : String(value);
-            if (column.cellRenderer) {
-              output = column.cellRenderer(params);
-            } else if (column.valueFormatter) {
-              output = column.valueFormatter(params);
-            }
-            return (
-              <div role="gridcell" key={column.field ?? column.headerName}>
-                {output}
-              </div>
-            );
-          })}
+vi.mock("next/dynamic", () => ({
+  default: () =>
+    function MockOpportunityGrid({
+      rows,
+    }: {
+      rows: Array<{
+        id: string;
+        state: string;
+        expected_net_profit: string | null;
+      }>;
+    }) {
+      return (
+        <div role="grid" aria-label="Opportunity feed">
+          {rows.map((row, index) => (
+            <div
+              key={row.id}
+              role="row"
+              data-testid={`opportunity-row-${index}`}
+              onClick={() =>
+                mockPush(`/opportunities/${encodeURIComponent(row.id)}`)
+              }
+            >
+              <span>{row.id}</span>
+              <span>{row.state.charAt(0).toUpperCase() + row.state.slice(1)}</span>
+              <span>{row.expected_net_profit ?? "—"}</span>
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
-  ),
+      );
+    },
 }));
 
 vi.mock("next/navigation", () => ({
@@ -145,7 +129,34 @@ describe("OpportunitiesPage", () => {
     expect(row).toBeInTheDocument();
     expect(row).toHaveTextContent("opp_1");
     expect(row).toHaveTextContent("Published");
-    expect(row).toHaveTextContent("$2,500.00");
+    expect(row).toHaveTextContent("2500.00");
+  });
+
+  it("filters opportunity rows using the search field", () => {
+    mockUseOpportunities.mockReturnValue({
+      data: {
+        data: [
+          baseOpportunity,
+          {
+            ...baseOpportunity,
+            id: "opp_2",
+            state: "contacted",
+          },
+        ],
+        meta: { trace_id: "t1", next_cursor: null, has_more: false },
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
+
+    render(<OpportunitiesPage />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Search opportunities" }), {
+      target: { value: "contacted" },
+    });
+
+    expect(screen.getByTestId("opportunity-row-0")).toHaveTextContent("opp_2");
+    expect(screen.queryByText("opp_1")).not.toBeInTheDocument();
   });
 
   it("navigates to opportunity detail on row click", () => {
@@ -160,8 +171,7 @@ describe("OpportunitiesPage", () => {
     });
 
     render(<OpportunitiesPage />);
-    const row = screen.getByTestId("opportunity-row-0") as HTMLElement;
-    fireEvent.click(row);
+    fireEvent.click(screen.getByTestId("opportunity-row-0"));
     expect(mockPush).toHaveBeenCalledWith("/opportunities/opp_1");
   });
 });

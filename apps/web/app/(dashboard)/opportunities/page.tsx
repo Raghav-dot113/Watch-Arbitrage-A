@@ -1,19 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useState } from "react";
-import {
-  AllCommunityModule,
-  colorSchemeDark,
-  ModuleRegistry,
-  themeQuartz,
-  type ColDef,
-  type ICellRendererParams,
-  type ValueFormatterParams,
-} from "ag-grid-community";
-import { AgGridReact } from "ag-grid-react";
-import { Box, Chip, TextField, Typography } from "@mui/material";
+import { Box, TextField, Typography } from "@mui/material";
 import { PageHeader } from "../../../components/shell/PageHeader";
 import { PageContainer } from "../../../components/ui/PageContainer";
 import { LoadingState } from "../../../components/ui/LoadingState";
@@ -24,30 +13,14 @@ import {
   useOpportunities,
   type Opportunity,
 } from "../../../lib/hooks/useOpportunities";
-import { formatCurrency, formatRelativeTime } from "../../../lib/formatters";
 
-ModuleRegistry.registerModules([AllCommunityModule]);
-
-const STATE_CHIP_COLOR: Record<
-  string,
-  "default" | "success" | "info" | "primary" | "error"
-> = {
-  published: "success",
-  dismissed: "default",
-  contacted: "info",
-  purchased: "primary",
-  expired: "error",
-};
-
-const STATE_LABEL: Record<string, string> = {
-  published: "Published",
-  dismissed: "Dismissed",
-  contacted: "Contacted",
-  purchased: "Purchased",
-  expired: "Expired",
-};
-
-const opportunityGridTheme = themeQuartz.withPart(colorSchemeDark);
+const OpportunityGrid = dynamic(
+  () => import("../../../components/opportunities/OpportunityGrid"),
+  {
+    ssr: false,
+    loading: () => <LoadingState label="Loading opportunity grid" />,
+  },
+);
 
 interface OpportunityRow {
   id: string;
@@ -72,33 +45,7 @@ function toRow(opportunity: Opportunity): OpportunityRow {
   };
 }
 
-function compareDecimalStrings(
-  left: string | null | undefined,
-  right: string | null | undefined,
-): number {
-  if (left == null || right == null) {
-    return left == null ? (right == null ? 0 : -1) : 1;
-  }
-  const leftParts = /^(-?)(\d+)(?:\.(\d+))?$/.exec(left);
-  const rightParts = /^(-?)(\d+)(?:\.(\d+))?$/.exec(right);
-  if (!leftParts || !rightParts) {
-    return left.localeCompare(right);
-  }
-  const scale = Math.max(leftParts[3]?.length ?? 0, rightParts[3]?.length ?? 0);
-  if (scale > 18) {
-    return left.localeCompare(right);
-  }
-  const leftMagnitude = BigInt(
-    `${leftParts[1]}${leftParts[2]}${(leftParts[3] ?? "").padEnd(scale, "0")}`,
-  );
-  const rightMagnitude = BigInt(
-    `${rightParts[1]}${rightParts[2]}${(rightParts[3] ?? "").padEnd(scale, "0")}`,
-  );
-  return leftMagnitude < rightMagnitude ? -1 : leftMagnitude > rightMagnitude ? 1 : 0;
-}
-
 export default function OpportunitiesPage() {
-  const router = useRouter();
   const { data, isLoading, isError, error } = useOpportunities();
   const [searchText, setSearchText] = useState("");
 
@@ -142,73 +89,14 @@ export default function OpportunitiesPage() {
     );
   }
 
-  const columns: ColDef<OpportunityRow>[] = [
-    {
-      field: "id",
-      headerName: "ID",
-      minWidth: 170,
-      cellRenderer: ({ value, data }: ICellRendererParams<OpportunityRow, string>) => (
-        <Link href={`/opportunities/${data?.id}`} onClick={(event) => event.stopPropagation()}>
-          {value}
-        </Link>
-      ),
-    },
-    {
-      field: "state",
-      headerName: "State",
-      minWidth: 130,
-      cellRenderer: ({ value }: ICellRendererParams<OpportunityRow, string>) => {
-        const state = value ?? "";
-        return (
-        <Chip
-          label={STATE_LABEL[state] ?? state}
-          size="small"
-          color={STATE_CHIP_COLOR[state] ?? "default"}
-          variant="outlined"
-        />
-        );
-      },
-    },
-    {
-      field: "score",
-      headerName: "Score",
-      minWidth: 110,
-      comparator: compareDecimalStrings,
-      valueFormatter: ({ value }: ValueFormatterParams<OpportunityRow, string | null>) =>
-        value ?? "—",
-    },
-    {
-      field: "expected_net_profit",
-      headerName: "Expected profit",
-      minWidth: 170,
-      comparator: (left, right, leftNode, rightNode) => {
-        const currencyOrder = (leftNode.data?.currency ?? "").localeCompare(
-          rightNode.data?.currency ?? "",
-        );
-        return currencyOrder || compareDecimalStrings(left, right);
-      },
-      valueFormatter: ({
-        value,
-        data,
-      }: ValueFormatterParams<OpportunityRow, string | null>) =>
-        formatCurrency(value ?? null, data?.currency ?? "USD"),
-    },
-    {
-      field: "roi",
-      headerName: "ROI",
-      minWidth: 110,
-      comparator: compareDecimalStrings,
-      valueFormatter: ({ value }: ValueFormatterParams<OpportunityRow, string | null>) =>
-        value == null ? "—" : `${value}%`,
-    },
-    {
-      field: "created_at",
-      headerName: "Published",
-      minWidth: 170,
-      valueFormatter: ({ value }: ValueFormatterParams<OpportunityRow, string>) =>
-        formatRelativeTime(value ?? null),
-    },
-  ];
+  const normalizedSearch = searchText.trim().toLowerCase();
+  const filteredRows = normalizedSearch
+    ? rows.filter((row) =>
+        Object.values(row).some((value) =>
+          String(value ?? "").toLowerCase().includes(normalizedSearch),
+        ),
+      )
+    : rows;
 
   return (
     <PageContainer>
@@ -227,7 +115,9 @@ export default function OpportunitiesPage() {
         }}
       >
         <Typography variant="body2" color="text.secondary">
-          {rows.length} opportunity{rows.length !== 1 ? "s" : ""} available
+          {normalizedSearch
+            ? `${filteredRows.length} matching opportunit${filteredRows.length === 1 ? "y" : "ies"}`
+            : `${rows.length} opportunit${rows.length === 1 ? "y" : "ies"} available`}
         </Typography>
         <TextField
           size="small"
@@ -237,34 +127,16 @@ export default function OpportunitiesPage() {
           sx={{ minWidth: 240 }}
         />
       </Box>
-      <Card variant="outlined">
-        <Box role="region" aria-label="Opportunity feed">
-          <AgGridReact<OpportunityRow>
-            aria-label="Opportunity feed"
-            className="chronoarb-opportunity-grid"
-            theme={opportunityGridTheme}
-            rowData={rows}
-            columnDefs={columns}
-            defaultColDef={{
-              sortable: true,
-              filter: true,
-              resizable: true,
-              minWidth: 100,
-            }}
-            getRowId={({ data }) => data.id}
-            quickFilterText={searchText}
-            pagination
-            paginationPageSize={20}
-            paginationPageSizeSelector={[10, 20, 50]}
-            domLayout="autoHeight"
-            onRowClicked={({ data }) => {
-              if (data) {
-                router.push(`/opportunities/${data.id}`);
-              }
-            }}
-          />
-        </Box>
-      </Card>
+      {filteredRows.length === 0 ? (
+        <EmptyState
+          title="No matching opportunities"
+          description="Try a different search term."
+        />
+      ) : (
+        <Card variant="outlined">
+          <OpportunityGrid rows={filteredRows} />
+        </Card>
+      )}
     </PageContainer>
   );
 }
