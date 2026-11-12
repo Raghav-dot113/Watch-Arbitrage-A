@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { act, render, screen, fireEvent } from "@testing-library/react";
+import { Suspense } from "react";
 import OpportunityDetailPage from "./page";
 
 const mockPush = vi.fn();
@@ -61,8 +62,21 @@ beforeEach(() => {
   mockRecordTradeOutcome.mockResolvedValue(undefined);
 });
 
+async function renderPage(opportunityId: string): Promise<void> {
+  await act(async () => {
+    render(
+      <Suspense fallback={<div>Loading route parameters</div>}>
+        <OpportunityDetailPage
+          params={Promise.resolve({ opportunityId })}
+        />
+      </Suspense>,
+    );
+    await Promise.resolve();
+  });
+}
+
 describe("OpportunityDetailPage", () => {
-  it("renders opportunity detail header and back button", () => {
+  it("renders opportunity detail header and back button", async () => {
     mockUseOpportunity.mockReturnValue({
       data: baseOpportunity,
       isLoading: false,
@@ -70,13 +84,13 @@ describe("OpportunityDetailPage", () => {
       error: null,
     });
 
-    render(<OpportunityDetailPage params={{ opportunityId: "opp_1" }} />);
+    await renderPage("opp_1");
     expect(screen.getByText("Opportunity detail")).toBeInTheDocument();
     expect(screen.getAllByText(/opp_1/)).toHaveLength(2);
     expect(screen.getByRole("button", { name: /back to feed/i })).toBeInTheDocument();
   });
 
-  it("shows LoadingState while loading", () => {
+  it("shows LoadingState while loading", async () => {
     mockUseOpportunity.mockReturnValue({
       data: null,
       isLoading: true,
@@ -84,12 +98,12 @@ describe("OpportunityDetailPage", () => {
       error: null,
     });
 
-    render(<OpportunityDetailPage params={{ opportunityId: "opp_1" }} />);
+    await renderPage("opp_1");
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
     expect(screen.getAllByText("Loading opportunity")).toHaveLength(2);
   });
 
-  it("shows ErrorState on error", () => {
+  it("shows ErrorState on error", async () => {
     mockUseOpportunity.mockReturnValue({
       data: null,
       isLoading: false,
@@ -97,12 +111,12 @@ describe("OpportunityDetailPage", () => {
       error: new Error("boom"),
     });
 
-    render(<OpportunityDetailPage params={{ opportunityId: "opp_1" }} />);
+    await renderPage("opp_1");
     expect(screen.getByText("Unable to load opportunity")).toBeInTheDocument();
     expect(screen.getByText("boom")).toBeInTheDocument();
   });
 
-  it("shows not found when data is null", () => {
+  it("shows not found when data is null", async () => {
     mockUseOpportunity.mockReturnValue({
       data: null,
       isLoading: false,
@@ -110,12 +124,12 @@ describe("OpportunityDetailPage", () => {
       error: null,
     });
 
-    render(<OpportunityDetailPage params={{ opportunityId: "missing" }} />);
+    await renderPage("missing");
     expect(screen.getByText("Opportunity not found")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /back to feed/i })).toBeInTheDocument();
   });
 
-  it("renders cost waterfall valuation metrics", () => {
+  it("renders cost waterfall valuation metrics", async () => {
     mockUseOpportunity.mockReturnValue({
       data: baseOpportunity,
       isLoading: false,
@@ -123,7 +137,7 @@ describe("OpportunityDetailPage", () => {
       error: null,
     });
 
-    render(<OpportunityDetailPage params={{ opportunityId: "opp_1" }} />);
+    await renderPage("opp_1");
     expect(screen.getByText("$11,150.00")).toBeInTheDocument();
     expect(screen.getByText("$15,000.00")).toBeInTheDocument();
     expect(screen.getByText("$3,350.00")).toBeInTheDocument();
@@ -134,7 +148,7 @@ describe("OpportunityDetailPage", () => {
     expect(screen.getByText("Published")).toBeInTheDocument();
   });
 
-  it("renders back to feed link", () => {
+  it("renders back to feed link", async () => {
     mockUseOpportunity.mockReturnValue({
       data: baseOpportunity,
       isLoading: false,
@@ -142,13 +156,13 @@ describe("OpportunityDetailPage", () => {
       error: null,
     });
 
-    render(<OpportunityDetailPage params={{ opportunityId: "opp_1" }} />);
+    await renderPage("opp_1");
     const link = screen.getByRole("link", { name: /back to feed/i });
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute("href", "/opportunities");
   });
 
-  it("renders decision action buttons", () => {
+  it("renders decision action buttons", async () => {
     mockUseOpportunity.mockReturnValue({
       data: baseOpportunity,
       isLoading: false,
@@ -156,7 +170,7 @@ describe("OpportunityDetailPage", () => {
       error: null,
     });
 
-    render(<OpportunityDetailPage params={{ opportunityId: "opp_1" }} />);
+    await renderPage("opp_1");
     expect(screen.getByRole("button", { name: /contacted/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /dismissed/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /purchased/i })).toBeInTheDocument();
@@ -170,7 +184,7 @@ describe("OpportunityDetailPage", () => {
       error: null,
     });
 
-    render(<OpportunityDetailPage params={{ opportunityId: "opp_1" }} />);
+    await renderPage("opp_1");
     const contactedButton = screen.getByRole("button", { name: /contacted/i });
     fireEvent.click(contactedButton);
     await vi.waitFor(() => {
@@ -186,7 +200,7 @@ describe("OpportunityDetailPage", () => {
       error: null,
     });
 
-    render(<OpportunityDetailPage params={{ opportunityId: "opp_1" }} />);
+    await renderPage("opp_1");
     const dismissedButton = screen.getByRole("button", { name: /dismissed/i });
     fireEvent.click(dismissedButton);
     await vi.waitFor(() => {
@@ -202,7 +216,7 @@ describe("OpportunityDetailPage", () => {
       error: null,
     });
 
-    render(<OpportunityDetailPage params={{ opportunityId: "opp_1" }} />);
+    await renderPage("opp_1");
     const purchasedButton = screen.getByRole("button", { name: /purchased/i });
     fireEvent.click(purchasedButton);
     await vi.waitFor(() => {

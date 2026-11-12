@@ -128,6 +128,7 @@ This is intentional: operational endpoints are consumed by machines (ALB target 
 | GET | `/catalog/references/{ref_id}` | Reference detail with market stats |
 | GET | `/catalog/references/{ref_id}/price-history` | Price history |
 | GET | `/catalog/brands` | List brands |
+| POST | `/catalog/channel3/search` | Search Channel3 watch products and current retailer offers |
 | GET | `/catalog/watch-lists` | User's watch lists |
 | POST | `/catalog/watch-lists` | Create watch list |
 | PUT | `/catalog/watch-lists/{id}` | Update watch list |
@@ -151,6 +152,12 @@ This is intentional: operational endpoints are consumed by machines (ALB target 
   OpenAPI response schemas. Reference market statistics/price history and identity
   invitations/member-role changes/removal remain deferred until their valuation and
   invitation workflows are implemented.
+- `POST /catalog/channel3/search` requires `opportunities:read` and a selected
+  organization. It uses the server-side `CHRONOARB_CHANNEL3_API_KEY` to search
+  Channel3's product catalog and returns retailer offers with a local `fetched_at`
+  timestamp. This is live product discovery, not ChronoArb's persisted market
+  history, valuation, or a guarantee of watch availability. See the [Channel3
+  Search API documentation](https://channel3.ai/docs/guides/search).
 
 ### 4.3 Opportunities (`/api/v1/opportunities`)
 

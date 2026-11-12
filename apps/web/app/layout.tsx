@@ -4,6 +4,10 @@ import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import Providers from "./Providers";
 import { AuthProvider } from "./AuthProvider";
 import "./globals.css";
+import "@bryntum/core-business/fontawesome/css/fontawesome.css";
+import "@bryntum/core-business/fontawesome/css/solid.css";
+import "@bryntum/grid-business/grid.css";
+import "@bryntum/grid-business/svalbard-dark.css";
 
 const inter = Inter({
   subsets: ["latin"],

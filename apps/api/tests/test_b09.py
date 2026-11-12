@@ -1,8 +1,17 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
+from decimal import Decimal
 
 import pytest
+from apps.api.catalog.application.channel3 import (
+    Channel3Offer,
+    Channel3Price,
+    Channel3Product,
+    Channel3SearchResponse,
+)
+from apps.api.catalog.infrastructure.channel3_client import Channel3Client
 from apps.api.catalog.infrastructure.models import Brand, Reference, WatchList
 from apps.api.identity.api.auth import issue_dev_token
 from apps.api.identity.infrastructure.models import Membership, Organization, User
@@ -279,8 +288,85 @@ async def test_catalog_requires_authentication(
         "/api/v1/catalog/brands",
         headers={"Authorization": ""},
     )
+    channel3_response = await client.post(
+        "/api/v1/catalog/channel3/search",
+        json={"query": "Rolex"},
+        headers={"Authorization": ""},
+    )
 
     assert response.status_code == 401
+    assert channel3_response.status_code == 401
+
+
+async def test_channel3_watch_search_reports_missing_server_key(
+    b09_client: tuple[AsyncClient, async_sessionmaker[AsyncSession]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = b09_client
+    monkeypatch.setattr(settings, "channel3_api_key", SecretStr(""))
+
+    response = await client.post(
+        "/api/v1/catalog/channel3/search",
+        json={"query": "Rolex Submariner"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "SERVICE_UNAVAILABLE"
+
+
+async def test_channel3_watch_search_returns_authenticated_catalog_results(
+    b09_client: tuple[AsyncClient, async_sessionmaker[AsyncSession]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, _ = b09_client
+
+    async def fake_search(
+        self: Channel3Client,
+        *,
+        query: str,
+        limit: int,
+        page_token: str | None,
+    ) -> Channel3SearchResponse:
+        assert query == "Rolex Submariner"
+        assert limit == 5
+        assert page_token is None
+        return Channel3SearchResponse(
+            products=[
+                Channel3Product(
+                    id="channel3-product-1",
+                    title="Submariner",
+                    offers=[
+                        Channel3Offer(
+                            url="https://retailer.example/watch",
+                            domain="retailer.example",
+                            price=Channel3Price(
+                                amount=Decimal("12950.50"),
+                                currency="USD",
+                            ),
+                            availability="InStock",
+                            condition="used",
+                        )
+                    ],
+                )
+            ],
+            next_page_token=None,
+            fetched_at=datetime(2026, 11, 11, tzinfo=UTC),
+        )
+
+    monkeypatch.setattr(Channel3Client, "search", fake_search)
+    response = await client.post(
+        "/api/v1/catalog/channel3/search",
+        json={"query": "Rolex Submariner", "limit": 5},
+    )
+
+    assert response.status_code == 200
+    product = response.json()["data"]["products"][0]
+    assert product["title"] == "Submariner"
+    assert product["offers"][0]["price"] == {
+        "amount": "12950.50",
+        "currency": "USD",
+    }
+    assert response.json()["data"]["fetched_at"] == "2026-11-11T00:00:00Z"
 
 
 async def test_viewer_cannot_mutate_watch_lists(

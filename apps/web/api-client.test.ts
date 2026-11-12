@@ -47,4 +47,33 @@ describe("ApiClient", () => {
     expect(err.retryable).toBe(false);
     expect(err.message).toContain("401");
   });
+
+  it("extracts the API error envelope instead of showing undefined fields", async () => {
+    const client = new ApiClient({
+      baseUrl: "http://localhost:8000",
+      fetch: async () =>
+        Response.json(
+          {
+            error: {
+              code: "UNAUTHORIZED",
+              message: "Authentication required.",
+              field_errors: {},
+              trace_id: "trace-401",
+              retryable: false,
+            },
+          },
+          { status: 401 },
+        ),
+    });
+
+    await expect(client.get("/api/v1/activity")).rejects.toMatchObject({
+      status: 401,
+      error: {
+        code: "UNAUTHORIZED",
+        message: "Authentication required.",
+        trace_id: "trace-401",
+      },
+      message: "401 UNAUTHORIZED: Authentication required.",
+    });
+  });
 });

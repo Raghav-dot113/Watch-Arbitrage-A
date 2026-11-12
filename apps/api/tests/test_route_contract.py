@@ -20,6 +20,7 @@ CONTRACT_ROUTES: frozenset[Route] = frozenset(
         ("GET", "/api/v1/catalog/references/{ref_id}"),
         ("GET", "/api/v1/catalog/references/{ref_id}/price-history"),
         ("GET", "/api/v1/catalog/brands"),
+        ("POST", "/api/v1/catalog/channel3/search"),
         ("GET", "/api/v1/catalog/watch-lists"),
         ("POST", "/api/v1/catalog/watch-lists"),
         ("PUT", "/api/v1/catalog/watch-lists/{id}"),

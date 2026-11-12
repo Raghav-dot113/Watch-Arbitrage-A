@@ -14,6 +14,15 @@ importers:
 
   apps/web:
     dependencies:
+      '@bryntum/core-business':
+        specifier: 8.0.0
+        version: 8.0.0
+      '@bryntum/grid-business':
+        specifier: 8.0.0
+        version: 8.0.0
+      '@bryntum/grid-react-business':
+        specifier: 8.0.0
+        version: 8.0.0
       '@chronoarb/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client-ts
@@ -41,12 +50,6 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4.0.0
         version: 4.3.3
-      ag-grid-community:
-        specifier: 36.2.0
-        version: 36.2.0
-      ag-grid-react:
-        specifier: 36.2.0
-        version: 36.2.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       next:
         specifier: ^16.0.0
         version: 16.3.0(@babel/core@7.29.7)(@playwright/test@1.62.1)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -216,6 +219,22 @@ packages:
   '@babel/types@7.29.8':
     resolution: {integrity: sha512-Vj1jF3cPfxg7OAfoI7QnVKLoILlm2JF9pnVHrX8qx7AHMiYWT+NDAA7jChlNgRS4WTLc/fD1lXLmPixluj+3Gg==}
     engines: {node: '>=6.9.0'}
+
+  '@bryntum/core-business@8.0.0':
+    resolution: {integrity: sha512-z1NlOYm5Ca9wRc4DVGpHnka+cS8ng/qXiFUiL9Dyz3I8lKkdlJ8x2vrBLvRXsDBUDOFXPWmpDKxA6qjZwL+VnA==}
+    engines: {node: '>=0.10.0'}
+
+  '@bryntum/core-react-business@8.0.0':
+    resolution: {integrity: sha512-tcZlw9EEkevKqmpEqsbgcLWnyuM/py9RFCmV+aWbIySJfzJlEmpwbcAd5g78PpKLHemnpQZopxWZRf7Ctsnvrg==}
+    engines: {node: '>=0.10.0'}
+
+  '@bryntum/grid-business@8.0.0':
+    resolution: {integrity: sha512-3jmn+bxFjmn6nBvXQ7F93+CdYIzSuUW3af5y0lhJj9X4DwDt+J7Ds+o/D6cxrxgGR7vPbX9eXj3J+Vmi0W+oVQ==}
+    engines: {node: '>=0.10.0'}
+
+  '@bryntum/grid-react-business@8.0.0':
+    resolution: {integrity: sha512-gF02LaS/OiWgHuJeKDbWg3vDdWG7LEJDll9B2sVmJkgtNpGA4anKkwLI452z2QArVBrGSExQ89dtaFiovWH1/A==}
+    engines: {node: '>=0.10.0'}
 
   '@csstools/color-helpers@5.1.0':
     resolution: {integrity: sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA==}
@@ -1489,21 +1508,6 @@ packages:
     resolution: {integrity: sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==}
     engines: {node: '>=0.4.0'}
     hasBin: true
-
-  ag-charts-types@14.2.0:
-    resolution: {integrity: sha512-4pDV6/4zbzPN7t607Gr1o6DO9RhmPafQGr+hIpTJBaerbaMoC+WOO3v/wkxFbvCNrHKOexEKSfNTH7PaAR4UzA==}
-
-  ag-grid-community@36.2.0:
-    resolution: {integrity: sha512-tK0Toj7t0fV/OMLPnDc0xlYKAqDbnCT3iJodYSn2TJ541caU8jPdYwWhMdW+AP2+pUNwFiJVgc04eJNfvBPsWw==}
-
-  ag-grid-react@36.2.0:
-    resolution: {integrity: sha512-7dsaR4Ga8/bJAOov7XJqxsDc1JAjUU5Bmh9+s4U9+/TKIdSsaVo53SuZb2yEFSB1elv3eh6aZP8a1fqGZehXwA==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  ag-stack@36.2.0:
-    resolution: {integrity: sha512-f3XT2htFs9dUPcHni2z9ak69QNta5ODEpooHuuNvbjN98JkokpEqRQ9YLQHQJFdCcgi9Ybs/j3zkkvmNRamIPg==}
 
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
@@ -3321,6 +3325,21 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
+  '@bryntum/core-business@8.0.0': {}
+
+  '@bryntum/core-react-business@8.0.0':
+    dependencies:
+      '@bryntum/core-business': 8.0.0
+
+  '@bryntum/grid-business@8.0.0':
+    dependencies:
+      '@bryntum/core-business': 8.0.0
+
+  '@bryntum/grid-react-business@8.0.0':
+    dependencies:
+      '@bryntum/core-react-business': 8.0.0
+      '@bryntum/grid-business': 8.0.0
+
   '@csstools/color-helpers@5.1.0': {}
 
   '@csstools/css-calc@2.1.4(@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4))(@csstools/css-tokenizer@3.0.4)':
@@ -4358,22 +4377,6 @@ snapshots:
       acorn: 8.18.0
 
   acorn@8.18.0: {}
-
-  ag-charts-types@14.2.0: {}
-
-  ag-grid-community@36.2.0:
-    dependencies:
-      ag-charts-types: 14.2.0
-      ag-stack: 36.2.0
-
-  ag-grid-react@36.2.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
-    dependencies:
-      ag-grid-community: 36.2.0
-      prop-types: 15.8.1
-      react: 19.2.8
-      react-dom: 19.2.8(react@19.2.8)
-
-  ag-stack@36.2.0: {}
 
   agent-base@7.1.4: {}
 

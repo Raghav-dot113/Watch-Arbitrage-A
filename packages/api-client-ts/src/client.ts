@@ -47,9 +47,14 @@ export class ApiClient {
     }
 
     if (!response.ok) {
-      const error = (payload as ApiError) ?? {
+      const body = isRecord(payload) ? payload : null;
+      const apiError = body && isRecord(body.error) ? body.error : body;
+      const error = isApiError(apiError) ? apiError : {
         code: "http_error",
-        message: response.statusText,
+        message:
+          (body && typeof body.detail === "string" && body.detail) ||
+          response.statusText ||
+          "The request failed.",
         field_errors: null,
         trace_id: "",
         retryable: response.status >= 500,
@@ -136,4 +141,18 @@ export class ApiClient {
   async getReady(): Promise<ReadyResponse> {
     return (await this.request<ReadyResponse>("/ready")) as ReadyResponse;
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isApiError(value: unknown): value is ApiError {
+  return (
+    isRecord(value) &&
+    typeof value.code === "string" &&
+    typeof value.message === "string" &&
+    typeof value.trace_id === "string" &&
+    typeof value.retryable === "boolean"
+  );
 }

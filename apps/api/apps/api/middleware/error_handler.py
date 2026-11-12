@@ -106,12 +106,8 @@ async def http_exception_handler(request: Request, exc: Exception) -> JSONRespon
     else:
         message = "The request could not be completed."
 
-    if exc.status_code == 422 and not field_errors:
-        field_errors = {"request": [message]}
-
     if exc.status_code == 503:
         code = "SERVICE_UNAVAILABLE"
-        message = "A required service is unavailable."
         retryable = True
     elif exc.status_code >= 500:
         code = "INTERNAL_ERROR"
@@ -141,9 +137,6 @@ async def http_exception_handler(request: Request, exc: Exception) -> JSONRespon
     elif exc.status_code == 429:
         code = "RATE_LIMITED"
         retryable = True
-    elif exc.status_code == 503:
-        code = "SERVICE_UNAVAILABLE"
-        retryable = True
     else:
         code = "REQUEST_ERROR"
         retryable = False
@@ -160,7 +153,7 @@ async def http_exception_handler(request: Request, exc: Exception) -> JSONRespon
     return response
 
 
-async def generic_exception_handler(request: Request, _: Exception) -> JSONResponse:
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception(
         "unhandled_error", extra={"trace_id": getattr(request.state, "trace_id", "unknown")}
     )

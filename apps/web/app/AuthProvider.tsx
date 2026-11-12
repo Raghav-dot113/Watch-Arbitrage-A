@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { fetchSession, fetchLogin, fetchLogout } from "../lib/auth-client";
-import { setAuthToken } from "../lib/api/client";
+import { setAuthOrganizationId, setAuthToken } from "../lib/api/client";
 import type { Session } from "../lib/session";
 
 interface AuthContextType {
@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const applySession = useCallback((session: Session | null) => {
     setAuthToken(session?.apiToken ?? null);
+    setAuthOrganizationId(session?.orgId ?? null);
     setUser(session);
   }, []);
 
@@ -62,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string) => {
     const session = await fetchLogin(email);
     setAuthToken(session.apiToken ?? null);
+    setAuthOrganizationId(session.orgId ?? null);
     setUser(session);
   };
 
@@ -70,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await fetchLogout();
     } finally {
       setAuthToken(null);
+      setAuthOrganizationId(null);
       setUser(null);
     }
   };

@@ -12,6 +12,9 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@bryntum/core-business": "8.0.0",
+    "@bryntum/grid-business": "8.0.0",
+    "@bryntum/grid-react-business": "8.0.0",
     "@chronoarb/api-client": "workspace:*",
     "@chronoarb/design-tokens": "workspace:*",
     "@emotion/cache": "^11.14.0",
@@ -21,8 +24,6 @@
     "@mui/material": "^9.3.1",
     "@mui/material-nextjs": "^9.3.0",
     "@tailwindcss/postcss": "^4.0.0",
-    "ag-grid-community": "36.2.0",
-    "ag-grid-react": "36.2.0",
     "next": "^16.0.0",
     "postcss": "^8.4.0",
     "react": "^19.0.0",
