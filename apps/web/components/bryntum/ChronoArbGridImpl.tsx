@@ -106,6 +106,8 @@ export function ChronoArbGrid<Row extends { id: string }>({
   }, [actions, columns]);
 
   const store = useMemo(() => ({ pageSize: 25 }), []);
+  const showPager = rows.length > 25;
+  const contentHeight = Math.max(160, Math.min(height, 110 + rows.length * 45));
 
   const handleCellClick = useCallback(
     ({
@@ -135,18 +137,17 @@ export function ChronoArbGrid<Row extends { id: string }>({
   );
 
   return (
-    <Box sx={{ minWidth: 0 }}>
+    <Box sx={{ minWidth: 0, bgcolor: "#FFFFFF", borderRadius: 2, overflow: "hidden" }}>
       <BryntumGrid
         ariaLabel={ariaLabel}
         cls="chronoarb-bryntum-grid"
-        height={height}
+        height={contentHeight}
         data={rows}
         store={store}
         columns={gridColumns}
-        bbar={{ type: "pagingtoolbar" }}
+        bbar={showPager ? { type: "pagingtoolbar" } : undefined}
         sortFeature
         filterFeature
-        filterBarFeature
         columnPickerFeature
         columnReorderFeature
         columnResizeFeature

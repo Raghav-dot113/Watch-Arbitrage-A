@@ -24,10 +24,10 @@
 .chronoarb-grid-action {
   margin: 0 4px;
   padding: 2px 9px;
-  border: 1px solid #334155;
+  border: 1px solid #cbd5e1;
   border-radius: 4px;
-  background: transparent;
-  color: #e2e8f0;
+  background: #ffffff;
+  color: #0f172a;
   font: inherit;
   font-size: 0.75rem;
   line-height: 1.4;
@@ -35,21 +35,94 @@
 }
 
 .chronoarb-grid-action:hover {
-  border-color: #f59e0b;
-  color: #f59e0b;
+  border-color: #0f172a;
+  color: #0f172a;
 }
 
 .chronoarb-grid-action.is-danger {
-  border-color: #7f1d1d;
-  color: #fca5a5;
+  border-color: #fecaca;
+  color: #b91c1c;
 }
 
 .chronoarb-grid-action.is-danger:hover {
   border-color: #ef4444;
-  color: #fecaca;
+  color: #991b1b;
+}
+
+/* The shared ChronoArb grids use a light surface even though the app imports
+   Bryntum's dark theme for the Opportunities grid. Overriding the neutral
+   palette here scopes the light look to Watches, Alerts, Activity and Admin. */
+.chronoarb-bryntum-grid.b-grid-base,
+.chronoarb-bryntum-grid .b-grid-base,
+.chronoarb-bryntum-grid {
+  color-scheme: light;
+  --b-widget-color-scheme: light;
+  --b-neutral-100: hsl(0 0% 100%);
+  --b-neutral-99: hsl(0 0% 99%);
+  --b-neutral-98: hsl(0 0% 98%);
+  --b-neutral-97: hsl(0 0% 97%);
+  --b-neutral-96: hsl(0 0% 96%);
+  --b-neutral-95: hsl(0 0% 95%);
+  --b-neutral-94: hsl(0 0% 94%);
+  --b-neutral-93: hsl(0 0% 93%);
+  --b-neutral-92: hsl(0 0% 92%);
+  --b-neutral-91: hsl(0 0% 91%);
+  --b-neutral-90: hsl(0 0% 90%);
+  --b-neutral-85: hsl(0 0% 85%);
+  --b-neutral-80: hsl(0 0% 80%);
+  --b-neutral-75: hsl(0 0% 75%);
+  --b-neutral-70: hsl(0 0% 70%);
+  --b-neutral-65: hsl(0 0% 65%);
+  --b-neutral-60: hsl(0 0% 60%);
+  --b-neutral-55: hsl(0 0% 55%);
+  --b-neutral-50: hsl(0 0% 50%);
+  --b-neutral-45: hsl(0 0% 45%);
+  --b-neutral-40: hsl(0 0% 40%);
+  --b-neutral-35: hsl(0 0% 35%);
+  --b-neutral-30: hsl(0 0% 30%);
+  --b-neutral-25: hsl(0 0% 25%);
+  --b-neutral-20: hsl(0 0% 20%);
+  --b-neutral-15: hsl(0 0% 15%);
+  --b-neutral-10: hsl(0 0% 10%);
+  --b-neutral-5: hsl(0 0% 5%);
+  --b-neutral-2: hsl(0 0% 2%);
+  --b-neutral-1: hsl(0 0% 1%);
+  --b-neutral-0: hsl(0 0% 0%);
+  --b-mix: #ffffff;
+  --b-opposite: #0f172a;
+  --b-grid-background: #ffffff;
+  --b-grid-cell-background: #ffffff;
+  --b-grid-cell-color: #0f172a;
+  --b-grid-cell-border-color: #e2e8f0;
+  --b-grid-header-background: #f8fafc;
+  --b-grid-header-color: #475569;
+  --b-panel-background: #ffffff;
+  --b-popup-background: #ffffff;
+  --b-toolbar-background: #ffffff;
+  --b-widget-border-color: #e2e8f0;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .chronoarb-bryntum-grid .b-grid-cell {
   font-size: 0.8125rem;
 }
+
+/* Pager and any remaining Bryntum inputs keep the light surface. */
+.chronoarb-bryntum-grid.b-grid-base input,
+.chronoarb-bryntum-grid.b-grid-base .b-text-field,
+.chronoarb-bryntum-grid.b-grid-base .b-pagingtoolbar input {
+  background-color: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.chronoarb-bryntum-grid.b-grid-base .b-grid-header {
+  background-color: #f8fafc;
+}
+
+
 

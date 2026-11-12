@@ -37,10 +37,10 @@ export function AppSidebar() {
               letterSpacing: '-0.01em',
               lineHeight: 1.2,
               color: '#F8FAFC',
-              fontSize: '0.9375rem',
+              fontSize: '1.125rem',
             }}
           >
-            Vintage Watch Intelligence
+            ChronoArb
           </Typography>
           <Typography
             variant="caption"
@@ -53,7 +53,7 @@ export function AppSidebar() {
               textTransform: 'uppercase',
             }}
           >
-            ChronoArb Intelligence
+            Watch Arbitrage Intelligence
           </Typography>
         </Box>
         <Box sx={{ overflow: 'auto', flex: 1, bgcolor: '#0F172A' }}>

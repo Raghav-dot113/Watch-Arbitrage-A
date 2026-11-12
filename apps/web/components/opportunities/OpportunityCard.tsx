@@ -59,13 +59,14 @@ export function OpportunityCard({ opportunity }: OpportunityCardProps) {
   const condition = listing?.condition || "Excellent";
   const country = listing?.seller_geography || "Germany";
 
-  // Watch image placeholder or specific image
+  // Local photos keep cards usable when external image hosts are blocked.
   const defaultImages = [
-    "https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=600&q=80",
-    "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=600&q=80",
-    "https://images.unsplash.com/photo-1547996160-71dfa69043ab?auto=format&fit=crop&w=600&q=80",
-    "https://images.unsplash.com/photo-1533139502658-0198f920d8e8?auto=format&fit=crop&w=600&q=80",
+    "/images/watch-photo-1.jpg",
+    "/images/watch-photo-2.jpg",
+    "/images/watch-photo-3.jpg",
+    "/images/watch-photo-4.jpg",
   ];
+  const fallbackImage = "/images/watch-photo-1.jpg";
   const imageIndex = Math.abs(hashString(opportunity.id)) % defaultImages.length;
   const imageUrl = (parsedAttrs?.image_url as string) || defaultImages[imageIndex];
 
@@ -106,6 +107,14 @@ export function OpportunityCard({ opportunity }: OpportunityCardProps) {
           component="img"
           src={imageUrl}
           alt={title}
+          loading="lazy"
+          decoding="async"
+          onError={(event) => {
+            const image = event.currentTarget;
+            if (!image.src.endsWith(fallbackImage)) {
+              image.src = fallbackImage;
+            }
+          }}
           sx={{
             width: "100%",
             height: "100%",
