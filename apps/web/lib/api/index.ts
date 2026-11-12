@@ -47,4 +47,4 @@ export type {
   Organization,
   OpportunityState,
 } from "./types";
-export { apiClient, setAuthToken, getAuthHeaders, baseUrl } from "./client";
+export { apiClient, getAuthHeaders, baseUrl } from "./client";

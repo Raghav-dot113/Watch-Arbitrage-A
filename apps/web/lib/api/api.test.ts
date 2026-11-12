@@ -6,7 +6,6 @@ import {
   getMe,
   createOrganization,
   getHealth,
-  setAuthToken,
   getAuthHeaders,
 } from "./index";
 import { apiClient } from "./client";
@@ -20,7 +19,6 @@ beforeEach(() => {
   vi.spyOn(apiClient, "get").mockImplementation(mockGet);
   vi.spyOn(apiClient, "getEnvelope").mockImplementation(mockGetEnvelope);
   vi.spyOn(apiClient, "post").mockImplementation(mockPost);
-  setAuthToken(null);
 });
 
 afterEach(() => {
@@ -40,18 +38,6 @@ describe("api layer", () => {
         { headers: {} }
       );
       expect(result).toEqual(expected);
-    });
-
-    it("includes the auth header when a token is set", async () => {
-      setAuthToken("test-token");
-      mockGetEnvelope.mockResolvedValue({ data: [], meta: { trace_id: "t1", next_cursor: null, has_more: false } });
-
-      await listOpportunities();
-
-      expect(mockGetEnvelope).toHaveBeenCalledWith(
-        "/api/v1/opportunities",
-        { headers: { Authorization: "Bearer test-token" } }
-      );
     });
 
     it("omits empty query params", async () => {
@@ -121,14 +107,8 @@ describe("api layer", () => {
   });
 
   describe("getAuthHeaders", () => {
-    it("returns empty object when no token", () => {
-      setAuthToken(null);
+    it("returns no authentication headers in demo mode", () => {
       expect(getAuthHeaders()).toEqual({});
-    });
-
-    it("returns bearer header when token set", () => {
-      setAuthToken("abc");
-      expect(getAuthHeaders()).toEqual({ Authorization: "Bearer abc" });
     });
   });
 

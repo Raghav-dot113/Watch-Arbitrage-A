@@ -17,6 +17,7 @@ from apps.api.infrastructure.database import get_db
 from apps.api.settings import settings
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import SecretStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -122,6 +123,8 @@ class AuthContext:
 
     @property
     def permissions(self) -> frozenset[Permission]:
+        if settings.auth_mode == "disabled":
+            return frozenset(Permission)
         return _ROLE_PERMISSIONS[self.role]
 
     def allows(self, permission: Permission) -> bool:
@@ -169,10 +172,29 @@ def issue_dev_token(
     return f"{signing_input.decode('ascii')}.{_base64url_encode(signature)}"
 
 
+async def _demo_user(session: AsyncSession) -> User | None:
+    """Resolve the hackathon demo account without a bearer token."""
+    result = await session.execute(select(User).where(User.email == settings.demo_user_email))
+    user = result.scalar_one_or_none()
+    if user is not None:
+        return user
+    fallback = await session.execute(select(User).order_by(User.id).limit(1))
+    return fallback.scalar_one_or_none()
+
+
 async def get_authenticated_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_BEARER)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> AuthenticatedUser:
+    if settings.auth_mode == "disabled":
+        user = await _demo_user(session)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Demo data is not seeded for this deployment",
+            )
+        return AuthenticatedUser(subject=user.cognito_sub, user_id=user.id, email=user.email)
+
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise _unauthorized()
     if settings.auth_mode not in {"dev", "test"}:
@@ -231,6 +253,8 @@ async def get_current_auth_context(
         membership_query = membership_query.where(
             Membership.organization_id == organization_selector
         )
+    elif settings.auth_mode == "disabled":
+        membership_query = membership_query.order_by(Organization.id).limit(1)
     memberships = (await session.execute(membership_query)).all()
     if not memberships:
         if organization_selector is not None:
@@ -343,8 +367,10 @@ def _verify_dev_token(token: str, secret: str) -> dict[str, Any] | None:
     issued_at = claims.get("iat")
     issuer = claims.get("iss")
     audience = claims.get("aud")
-    valid_audience = audience is None or audience == settings.jwt_audience or (
-        isinstance(audience, list) and settings.jwt_audience in audience
+    valid_audience = (
+        audience is None
+        or audience == settings.jwt_audience
+        or (isinstance(audience, list) and settings.jwt_audience in audience)
     )
     if issuer is not None and issuer != settings.jwt_issuer:
         return None

@@ -1,0 +1,75 @@
+﻿# Render Blueprint for the ChronoArb hackathon deployment.
+#
+# This blueprint intentionally runs with authentication disabled:
+#   CHRONOARB_AUTH_MODE=disabled
+# The API resolves the seeded demo owner and grants demo permissions. Do not use
+# this configuration for a public production deployment.
+#
+# After creating the Blueprint, set NEXT_PUBLIC_BRYNTUM_LICENSE_KEY in the
+# chronoarb-web service environment. If Render assigns different service URLs,
+# update NEXT_PUBLIC_API_BASE_URL, CHRONOARB_CORS_ORIGINS, and
+# CHRONOARB_WEB_BASE_URL to match.
+
+databases:
+  - name: chronoarb-db
+    databaseName: chronoarb
+    user: chronoarb
+    plan: free
+    region: oregon
+
+services:
+  - type: web
+    name: chronoarb-api
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: apps/api
+    buildCommand: pip install --upgrade pip && pip install -e ../../packages/domain-python && pip install -e .
+    startCommand: python -m apps.api.seed && python -m uvicorn apps.api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.0
+      - key: CHRONOARB_ENVIRONMENT
+        value: production
+      - key: CHRONOARB_AUTH_MODE
+        value: disabled
+      - key: CHRONOARB_DEMO_USER_EMAIL
+        value: owner@demo.example.com
+      - key: CHRONOARB_LOG_LEVEL
+        value: INFO
+      - key: CHRONOARB_DATABASE_URL
+        fromDatabase:
+          name: chronoarb-db
+          property: connectionString
+      - key: CHRONOARB_CORS_ORIGINS
+        value: https://chronoarb-web.onrender.com
+      - key: CHRONOARB_WEB_BASE_URL
+        value: https://chronoarb-web.onrender.com
+      - key: CHRONOARB_PAYPAL_RETURN_URL
+        value: https://chronoarb-web.onrender.com/settings/organization?checkout=success
+      - key: CHRONOARB_PAYPAL_CANCEL_URL
+        value: https://chronoarb-web.onrender.com/settings/organization?checkout=cancel
+      - key: CHRONOARB_PAYPAL_API_BASE_URL
+        value: https://api-m.sandbox.paypal.com
+      - key: CHRONOARB_PROVIDER_REQUEST_TIMEOUT_SECONDS
+        value: "10"
+
+  - type: web
+    name: chronoarb-web
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: apps/web
+    buildCommand: cd ../.. && corepack enable && corepack prepare pnpm@11.3.0 --activate && pnpm install --frozen-lockfile && pnpm --filter @chronoarb/web build
+    startCommand: node node_modules/next/dist/bin/next start -p $PORT
+    healthCheckPath: /opportunities
+    envVars:
+      - key: NODE_VERSION
+        value: 22.19.0
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://chronoarb-api.onrender.com
+      # Enter the Bryntum Business key in the Render dashboard when prompted.
+      - key: NEXT_PUBLIC_BRYNTUM_LICENSE_KEY
+        sync: false
+

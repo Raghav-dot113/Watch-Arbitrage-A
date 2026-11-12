@@ -33,7 +33,7 @@ _listing_status = sa.Enum(
         "suppressed",
         "stale",
         name="listing_status",
-        create_type=False,
+        create_type=True,
     ),
     "postgresql",
 )

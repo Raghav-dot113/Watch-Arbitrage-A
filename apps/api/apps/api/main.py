@@ -11,6 +11,7 @@ from apps.api.feedback.api.routes import activity_router
 from apps.api.feedback.api.routes import router as feedback_router
 from apps.api.identity.api.routes import router as identity_router
 from apps.api.infrastructure.database import (
+    initialize_database_schema,
     initialize_dev_sqlite_schema,
     is_dev_sqlite_database,
 )
@@ -52,6 +53,10 @@ logger = logging.getLogger("chronoarb.api")
 async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
     if is_dev_sqlite_database():
         await initialize_dev_sqlite_schema()
+    elif settings.auth_mode == "disabled":
+        # Hackathon/demo deployments run without login; create any missing tables
+        # before serving so a fresh Render database is usable on first boot.
+        await initialize_database_schema()
     yield
 
 

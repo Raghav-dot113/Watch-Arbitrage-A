@@ -29,7 +29,7 @@ _delivery_status = sa.Enum(
         "failed",
         "suppressed",
         name="delivery_status",
-        create_type=False,
+        create_type=True,
     ),
     "postgresql",
 )

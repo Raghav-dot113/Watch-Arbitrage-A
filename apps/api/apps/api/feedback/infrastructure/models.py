@@ -29,7 +29,7 @@ _feedback_decision = sa.Enum(
         "contacted",
         "dismissed",
         name="feedback_decision",
-        create_type=False,
+        create_type=True,
     ),
     "postgresql",
 )

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import Providers from "./Providers";
-import { AuthProvider } from "./AuthProvider";
 import "./globals.css";
 import "@bryntum/core-business/fontawesome/css/fontawesome.css";
 import "@bryntum/core-business/fontawesome/css/solid.css";
@@ -30,9 +29,7 @@ export default function RootLayout({
       <body>
         <AppRouterCacheProvider options={{ enableCssLayer: true }}>
           <Providers>
-            <AuthProvider>
-              <main>{children}</main>
-            </AuthProvider>
+            <main>{children}</main>
           </Providers>
         </AppRouterCacheProvider>
       </body>

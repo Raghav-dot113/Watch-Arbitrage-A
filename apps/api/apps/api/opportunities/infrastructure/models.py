@@ -33,7 +33,7 @@ _opportunity_state = sa.Enum(
         "purchased",
         "expired",
         name="opportunity_state",
-        create_type=False,
+        create_type=True,
     ),
     "postgresql",
 )

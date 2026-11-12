@@ -453,11 +453,38 @@ async def test_dev_auth_fails_closed_without_a_configured_secret(
     assert response.status_code == 503
 
 
+async def test_disabled_auth_mode_uses_the_seeded_demo_user_without_a_token(
+    auth_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client, session_factory = auth_client
+    monkeypatch.setattr(settings, "auth_mode", "disabled")
+    monkeypatch.setattr(settings, "demo_user_email", "demo@example.test")
+    await _seed_user(
+        session_factory,
+        subject="demo",
+        memberships=(("org_demo", "owner"),),
+    )
+
+    tenant = await client.get("/tenant")
+    billing = await client.get("/billing")
+    platform = await client.get("/platform")
+
+    assert tenant.status_code == 200
+    assert tenant.json()["organization_id"] == "org_demo"
+    assert tenant.json()["role"] == "owner"
+    assert billing.status_code == 200
+    assert platform.status_code == 200
+    assert platform.json()["role"] == "owner"
+
+
 def test_settings_reject_development_auth_outside_local_environments() -> None:
     with pytest.raises(ValueError, match="only allowed in local or test"):
         Settings(_env_file=None, environment="production", auth_mode="dev")
 
 
-def test_token_issuer_requires_a_sufficient_secret() -> None:
+def test_token_issuer_requires_a_sufficient_secret(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "auth_mode", "dev")
     with pytest.raises(ValueError, match="at least 32 bytes"):
         issue_dev_token("user-sub", secret="short")

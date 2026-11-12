@@ -28,7 +28,7 @@ _outbox_event_status = sa.Enum(
         "published",
         "failed",
         name="outbox_event_status",
-        create_type=False,
+        create_type=True,
     ),
     "postgresql",
 )

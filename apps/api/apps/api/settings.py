@@ -24,7 +24,15 @@ class Settings(BaseSettings):
     debug: bool = False
     log_level: str = "INFO"
     environment: Literal["local", "test", "staging", "production"] = "local"
-    auth_mode: Literal["dev", "oidc"] = "dev"
+    auth_mode: Literal["dev", "oidc", "disabled"] = "dev"
+    demo_user_email: str = Field(
+        default="owner@demo.example.com",
+        validation_alias=AliasChoices(
+            "CHRONOARB_DEMO_USER_EMAIL",
+            "DEMO_USER_EMAIL",
+            "demo_user_email",
+        ),
+    )
     dev_jwt_secret: SecretStr = SecretStr("")
     jwt_issuer: str = "chronoarb-dev"
     jwt_audience: str = "chronoarb-api"
@@ -82,7 +90,26 @@ class Settings(BaseSettings):
     # PostgreSQL async drivers (asyncpg, psycopg) have unresolved compatibility
     # issues with Python 3.14 as of 2026-08-03. Production must override via
     # CHRONOARB_DATABASE_URL=postgresql+asyncpg://... (CI runs Python 3.13).
-    database_url: str = "sqlite+aiosqlite:///chronoarb.db"
+    database_url: str = Field(
+        default="sqlite+aiosqlite:///chronoarb.db",
+        validation_alias=AliasChoices(
+            "CHRONOARB_DATABASE_URL",
+            "DATABASE_URL",
+            "database_url",
+        ),
+    )
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_postgres_driver(cls, value: object) -> object:
+        """Accept Render's `postgresql://` URL and select the async driver."""
+        if not isinstance(value, str):
+            return value
+        if value.startswith("postgres://"):
+            return "postgresql+asyncpg://" + value[len("postgres://") :]
+        if value.startswith("postgresql://"):
+            return "postgresql+asyncpg://" + value[len("postgresql://") :]
+        return value
 
     @field_validator("database_url")
     @classmethod

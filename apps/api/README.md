@@ -17,29 +17,22 @@ python -m pip install --upgrade pip
 python -m pip install -e .\packages\domain-python
 python -m pip install -e ".\apps\api[dev]"
 
-# The dev-token endpoint needs a local-only signing secret (32 random bytes).
-$secretBytes = New-Object byte[] 32
-$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
-$rng.GetBytes($secretBytes)
-$rng.Dispose()
-$env:CHRONOARB_DEV_JWT_SECRET = [Convert]::ToBase64String($secretBytes)
-
 Set-Location .\apps\api
 python -m apps.api.init_local_db
 python -m apps.api.seed
 python -m uvicorn apps.api.main:app --reload
 ```
 
-`init_local_db` creates missing ORM tables only when the environment is local or
-test, auth mode is `dev`, and the configured database is SQLite. The API also
-performs this idempotent initialization at startup in that same configuration.
-The seed command creates the demo organizations, users, and memberships (along
-with the rest of the demo data) and can be run repeatedly.
+`init_local_db` creates missing ORM tables for local SQLite. The API also performs
+this idempotent initialization at startup. The seed command creates the demo
+organizations, users, and memberships (along with the rest of the demo data) and
+can be run repeatedly.
 
 To keep the local configuration across PowerShell sessions, copy
-`.env.example` to `.env` in the repository root and set
-`CHRONOARB_DEV_JWT_SECRET` to a random value of at least 32 bytes. Do not use
-development authentication in staging or production.
+`.env.example` to `.env` in the repository root. The hackathon default is
+`CHRONOARB_AUTH_MODE=disabled`: the API uses the seeded
+`owner@demo.example.com` user and no login is required. Set
+`CHRONOARB_DEMO_USER_EMAIL` to use a different seeded account.
 
 ## Alembic / PostgreSQL
 
@@ -56,24 +49,22 @@ python -m alembic -c ..\..\alembic.ini upgrade heads
 The two branches both create `stripe_webhook_events`; reconcile that existing
 migration conflict before applying all PostgreSQL heads to a database.
 
-## Verify the development token
+## Verify demo mode
 
-With the server running, use a second PowerShell window:
+With the server running, open:
+
+- Web app: `http://localhost:3000/opportunities`
+- API docs: `http://127.0.0.1:8000/docs`
+
+No login screen is shown. Unauthenticated API calls use the seeded demo account:
 
 ```powershell
-$body = @{ email = "dealer@demo.example.com" } | ConvertTo-Json
-$response = Invoke-RestMethod `
-    -Method Post `
-    -Uri "http://127.0.0.1:8000/api/v1/identity/dev-token" `
-    -ContentType "application/json" `
-    -Body $body
-
-$response.data | Select-Object user_id, email, organization_id, role
-$response.data.access_token
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/opportunities?limit=2"
 ```
 
-The response should contain the seeded dealer, the `demo` organization, role
-`dealer`, and an access token.
+The response contains the demo opportunities. See
+[the Render deployment guide](../../docs/deployment/render.md) for the hosted
+configuration.
 
 ## Telegram alerts
 
@@ -112,4 +103,3 @@ include `telegram`, and choose **Test**. The dispatcher must be running for the
 message to arrive. If neither a user-linked Telegram chat nor
 `CHRONOARB_TELEGRAM_CHAT_ID` exists, the dispatcher records the delivery as
 `suppressed` rather than retrying forever.
-

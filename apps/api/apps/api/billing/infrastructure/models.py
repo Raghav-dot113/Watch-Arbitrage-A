@@ -25,7 +25,7 @@ _subscription_status = sa.Enum(
         "canceled",
         "unpaid",
         name="subscription_status",
-        create_type=False,
+        create_type=True,
     ),
     "postgresql",
 )
