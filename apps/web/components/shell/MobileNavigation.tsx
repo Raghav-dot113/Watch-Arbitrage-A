@@ -55,7 +55,12 @@ export function MobileNavigation() {
         }}
         sx={{
           display: { xs: 'block', lg: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 256 },
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: 256,
+            bgcolor: '#0F172A',
+            borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+          },
         }}
       >
         <nav aria-label="Mobile navigation" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -67,36 +72,35 @@ export function MobileNavigation() {
               flexDirection: 'column',
               justifyContent: 'center',
               minHeight: 64,
-              borderBottom: '1px solid',
-              borderColor: 'divider',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             }}
           >
             <Typography
-              variant="overline"
               sx={{
                 fontWeight: 700,
-                letterSpacing: '0.12em',
+                letterSpacing: '-0.01em',
                 lineHeight: 1.2,
-                color: 'text.primary',
-                fontSize: '0.75rem',
+                color: '#F8FAFC',
+                fontSize: '0.9375rem',
               }}
             >
-              CHRONOARB
+              Vintage Watch Intelligence
             </Typography>
             <Typography
               variant="caption"
               sx={{
-                fontWeight: 500,
-                letterSpacing: '0.02em',
-                mt: 0.25,
-                color: 'text.secondary',
-                fontSize: '0.6875rem',
+                fontWeight: 600,
+                letterSpacing: '0.08em',
+                mt: 0.5,
+                color: '#F59E0B',
+                fontSize: '0.625rem',
+                textTransform: 'uppercase',
               }}
             >
-              Dealer Intelligence
+              ChronoArb Intelligence
             </Typography>
           </Box>
-          <Box sx={{ overflow: 'auto', flex: 1 }}>
+          <Box sx={{ overflow: 'auto', flex: 1, bgcolor: '#0F172A' }}>
             <NavLinks onItemClick={() => setMobileOpen(false)} />
           </Box>
         </nav>

@@ -1,19 +1,46 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Button, Card, CardContent, Grid, TextField, Typography, Chip, IconButton } from "@mui/material";
-import { Search as SearchIcon, Launch as LaunchIcon, Favorite as FavoriteIcon } from "@mui/icons-material";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Grid,
+  IconButton,
+  TextField,
+  Typography,
+} from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import LaunchIcon from "@mui/icons-material/Launch";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import ClearIcon from "@mui/icons-material/Clear";
+import Alert from "@mui/material/Alert";
 import { PageContainer } from "../../../components/ui/PageContainer";
-import { PageHeader } from "../../../components/shell/PageHeader";
-import { LoadingState } from "../../../components/ui/LoadingState";
-import { ErrorState } from "../../../components/ui/ErrorState";
 import { EmptyState } from "../../../components/ui/EmptyState";
-import { useChannel3Search, type Channel3Product, type Channel3Offer, type Channel3Price, type Channel3SearchRequest } from "../../../lib/hooks";
+import {
+  useChannel3Search,
+  type Channel3Product,
+  type Channel3Offer,
+  type Channel3Price,
+  type Channel3SearchRequest,
+} from "../../../lib/hooks";
 
 interface SearchFormState {
   query: string;
   limit: number;
 }
+
+const PRESET_SEARCHES = [
+  "Cartier Tank",
+  "Rolex Submariner",
+  "Omega Speedmaster",
+  "Rolex Datejust",
+  "Patek Philippe",
+  "Audemars Piguet",
+];
 
 export default function SearchPage() {
   const [formState, setFormState] = useState<SearchFormState>({ query: "", limit: 20 });
@@ -22,15 +49,21 @@ export default function SearchPage() {
 
   const { data, isLoading, isError, error, refetch } = useChannel3Search(searchParams);
 
+  const executeSearch = (queryText: string, limitNum = formState.limit) => {
+    const trimmed = queryText.trim();
+    if (trimmed.length < 2) return;
+    setSearchParams({ query: trimmed, limit: limitNum });
+    setLastQuery(trimmed);
+  };
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (formState.query.trim().length < 2) return;
-    const params: Channel3SearchRequest = {
-      query: formState.query.trim(),
-      limit: formState.limit,
-    };
-    setSearchParams(params);
-    setLastQuery(formState.query.trim());
+    executeSearch(formState.query);
+  };
+
+  const handlePresetClick = (preset: string) => {
+    setFormState((prev) => ({ ...prev, query: preset }));
+    executeSearch(preset);
   };
 
   const handleClear = () => {
@@ -40,10 +73,13 @@ export default function SearchPage() {
   };
 
   const formatPrice = (price: Channel3Price) => {
+    const raw = price.amount ?? price.price;
+    const num = typeof raw === "number" ? raw : parseFloat(String(raw || "0"));
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: price.currency,
-    }).format(parseFloat(price.amount));
+      currency: price.currency || "USD",
+      maximumFractionDigits: 0,
+    }).format(isNaN(num) ? 0 : num);
   };
 
   const getMainImage = (product: Channel3Product): string | null => {
@@ -52,95 +88,221 @@ export default function SearchPage() {
   };
 
   const getBestOffer = (product: Channel3Product): Channel3Offer | null => {
-    if (product.offers.length === 0) return null;
+    if (!product.offers || product.offers.length === 0) return null;
     return product.offers.reduce((best, offer) => {
-      const bestPrice = parseFloat(best.price.amount);
-      const offerPrice = parseFloat(offer.price.amount);
+      const bestRaw = best.price.amount ?? best.price.price;
+      const offerRaw = offer.price.amount ?? offer.price.price;
+      const bestPrice = typeof bestRaw === "number" ? bestRaw : parseFloat(String(bestRaw || "0"));
+      const offerPrice = typeof offerRaw === "number" ? offerRaw : parseFloat(String(offerRaw || "0"));
       return offerPrice < bestPrice ? offer : best;
     });
   };
-
-  if (isLoading && !data) {
-    return (
-      <PageContainer>
-        <LoadingState label="Searching watches" fullPage />
-      </PageContainer>
-    );
-  }
-
-  if (isError) {
-    return (
-      <PageContainer>
-        <ErrorState
-          title="Search failed"
-          description={error instanceof Error ? error.message : "An unexpected error occurred."}
-          retryLabel="Try again"
-          onRetry={() => refetch()}
-        />
-      </PageContainer>
-    );
-  }
 
   const products = data?.products ?? [];
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Watch Search"
-        description="Search the Channel3 catalog for watches across multiple retailers."
-      />
+      {/* Header */}
+      <Box sx={{ mb: 3 }}>
+        <Typography
+          variant="h4"
+          component="h1"
+          sx={{
+            fontWeight: 800,
+            color: "#0F172A",
+            fontSize: { xs: "1.5rem", md: "1.875rem" },
+            letterSpacing: "-0.02em",
+            mb: 0.5,
+          }}
+        >
+          Watch Search
+        </Typography>
+        <Typography variant="body2" sx={{ color: "#64748B", fontSize: "0.9375rem" }}>
+          Live multi-marketplace search across retailers with real-time pricing intelligence.
+        </Typography>
+      </Box>
 
-      <Card variant="outlined" sx={{ mb: 3 }}>
-        <CardContent>
+      {/* Search Bar Card */}
+      <Card
+        variant="outlined"
+        sx={{
+          mb: 4,
+          borderRadius: "16px",
+          bgcolor: "#FFFFFF",
+          borderColor: "#E2E8F0",
+          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.04)",
+        }}
+      >
+        <CardContent sx={{ p: 3 }}>
           <form onSubmit={handleSubmit}>
-            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
               <TextField
-                label="Search watches"
-                placeholder="e.g., Rolex Submariner, Omega Speedmaster"
+                placeholder="Search watches (e.g., Cartier Tank, Rolex Submariner)..."
                 value={formState.query}
                 onChange={(e) => setFormState({ ...formState, query: e.target.value })}
                 fullWidth
-                sx={{ flex: 1, minWidth: 300 }}
+                size="medium"
+                slotProps={{
+                  input: {
+                    startAdornment: <SearchIcon sx={{ color: "#94A3B8", mr: 1 }} />,
+                    endAdornment: formState.query ? (
+                      <IconButton size="small" onClick={() => setFormState({ ...formState, query: "" })}>
+                        <ClearIcon fontSize="small" />
+                      </IconButton>
+                    ) : null,
+                  },
+                }}
+                sx={{
+                  flex: 1,
+                  minWidth: { xs: "100%", sm: 320 },
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "12px",
+                    bgcolor: "#F8FAFC",
+                    "&:hover": { bgcolor: "#FFFFFF" },
+                  },
+                }}
               />
+
               <TextField
                 type="number"
-                label="Results limit"
+                label="Limit"
                 value={formState.limit}
                 onChange={(e) => setFormState({ ...formState, limit: parseInt(e.target.value) || 20 })}
-                sx={{ minWidth: 160 }}
+                size="medium"
+                sx={{
+                  width: { xs: "100%", sm: 110 },
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "12px",
+                  },
+                }}
               />
-              <Button type="submit" variant="contained" size="large" startIcon={<SearchIcon />}>
-                Search
+
+              <Button
+                type="submit"
+                variant="contained"
+                size="large"
+                disabled={isLoading || formState.query.trim().length < 2}
+                startIcon={isLoading ? <CircularProgress size={18} color="inherit" /> : <SearchIcon />}
+                sx={{
+                  bgcolor: "#0F172A",
+                  color: "#FFFFFF",
+                  fontWeight: 700,
+                  px: 3,
+                  py: 1.4,
+                  borderRadius: "12px",
+                  "&:hover": { bgcolor: "#1E293B" },
+                }}
+              >
+                {isLoading ? "Searching..." : "Search"}
               </Button>
+
               {lastQuery && (
-                <Button variant="outlined" onClick={handleClear} startIcon={<SearchIcon fontSize="small" />}>
+                <Button
+                  variant="outlined"
+                  size="large"
+                  onClick={handleClear}
+                  sx={{
+                    borderRadius: "12px",
+                    borderColor: "#CBD5E1",
+                    color: "#475569",
+                    py: 1.4,
+                    "&:hover": { borderColor: "#0F172A", bgcolor: "#F8FAFC" },
+                  }}
+                >
                   Clear
                 </Button>
               )}
             </Box>
           </form>
+
+          {/* Quick preset chips */}
+          <Box sx={{ mt: 2.5, display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+            <Typography variant="caption" sx={{ color: "#64748B", fontWeight: 600, mr: 0.5 }}>
+              Trending:
+            </Typography>
+            {PRESET_SEARCHES.map((preset) => (
+              <Chip
+                key={preset}
+                label={preset}
+                size="small"
+                onClick={() => handlePresetClick(preset)}
+                sx={{
+                  bgcolor: "#F1F5F9",
+                  color: "#334155",
+                  fontWeight: 600,
+                  fontSize: "0.75rem",
+                  cursor: "pointer",
+                  borderRadius: "8px",
+                  "&:hover": {
+                    bgcolor: "#E2E8F0",
+                    color: "#0F172A",
+                  },
+                }}
+              />
+            ))}
+          </Box>
         </CardContent>
       </Card>
 
-      {products.length === 0 && searchParams && !isLoading ? (
+      {/* Error notification without removing search bar */}
+      {isError && (
+        <Alert
+          severity="error"
+          sx={{ mb: 3, borderRadius: "12px" }}
+          action={
+            <Button color="inherit" size="small" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
+        >
+          {error instanceof Error ? error.message : "Search temporarily failed. Please try again."}
+        </Alert>
+      )}
+
+      {/* Loading Skeleton Indicator */}
+      {isLoading && (
+        <Box sx={{ py: 6, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+          <CircularProgress size={40} sx={{ color: "#0F172A" }} />
+          <Typography variant="body2" sx={{ color: "#64748B", fontWeight: 500 }}>
+            Scanning retail marketplaces for "{lastQuery}"...
+          </Typography>
+        </Box>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && !isError && products.length === 0 && searchParams && (
         <EmptyState
           title="No watches found"
-          description={`No results found for "${lastQuery}". Try a different search term.`}
+          description={`No results found for "${lastQuery}". Try a different keyword like "Cartier Tank" or "Rolex".`}
         />
-      ) : products.length > 0 ? (
-        <>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, display: "block" }}>
-            Found {products.length} watch{products.length !== 1 ? "es" : ""} for "{lastQuery}"
-          </Typography>
+      )}
+
+      {/* Products Grid */}
+      {!isLoading && products.length > 0 && (
+        <Box>
+          <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", mb: 2.5 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: "#0F172A", fontSize: "1.125rem" }}>
+              Search Results
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#64748B" }}>
+              Found {products.length} watch{products.length !== 1 ? "es" : ""} for "{lastQuery}"
+            </Typography>
+          </Box>
+
           <Grid container spacing={3}>
             {products.map((product: Channel3Product) => (
               <Grid size={{ xs: 12, sm: 6, lg: 4, xl: 3 }} key={product.id}>
-                <ProductCard product={product} getMainImage={getMainImage} getBestOffer={getBestOffer} formatPrice={formatPrice} />
+                <ProductCard
+                  product={product}
+                  getMainImage={getMainImage}
+                  getBestOffer={getBestOffer}
+                  formatPrice={formatPrice}
+                />
               </Grid>
             ))}
           </Grid>
-        </>
-      ) : null}
+        </Box>
+      )}
     </PageContainer>
   );
 }
@@ -158,77 +320,165 @@ function ProductCard({
 }) {
   const image = getMainImage(product);
   const bestOffer = getBestOffer(product);
-  const brandName = product.brands[0]?.name ?? "Unknown Brand";
+  const brandName = product.brands[0]?.name ?? "Watch";
+
+  const domain = bestOffer?.domain || "Retailer";
+  const domainBadge = domain.replace(/^www\./, "").toUpperCase();
 
   return (
-    <Card variant="outlined" sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <Card
+      variant="outlined"
+      sx={{
+        borderRadius: "16px",
+        overflow: "hidden",
+        bgcolor: "#FFFFFF",
+        borderColor: "#E2E8F0",
+        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.04)",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        transition: "transform 0.15s ease, box-shadow 0.15s ease",
+        "&:hover": {
+          boxShadow: "0 8px 24px 0 rgba(0, 0, 0, 0.08)",
+          transform: "translateY(-2px)",
+        },
+      }}
+    >
+      {/* Watch Image Box with Overlays */}
       <Box
-        component="div"
         sx={{
-          aspectRatio: "1 / 1",
           position: "relative",
+          width: "100%",
+          height: 220,
+          bgcolor: "#F8FAFC",
           overflow: "hidden",
-          bgcolor: "grey.100",
         }}
       >
         {image ? (
-          <img
+          <Box
+            component="img"
             src={image}
             alt={product.title}
-            style={{
+            sx={{
               width: "100%",
               height: "100%",
-              objectFit: "cover",
-              transition: "transform 0.2s",
+              objectFit: "contain",
+              p: 2,
+              transition: "transform 0.3s ease",
+              "&:hover": {
+                transform: "scale(1.05)",
+              },
             }}
-            onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
-            onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
           />
         ) : (
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-            <Typography color="text.disabled">No image</Typography>
+            <Typography variant="body2" sx={{ color: "#94A3B8" }}>
+              No image available
+            </Typography>
           </Box>
         )}
-        {product.brands.length > 0 && (
-          <Chip
-            label={brandName}
-            size="small"
-            sx={{
-              position: "absolute",
-              top: 8,
-              left: 8,
-              bgcolor: "background.paper",
-              boxShadow: 1,
-            }}
-          />
-        )}
+
+        {/* Top-Left: Retailer/Marketplace Badge */}
+        <Box
+          sx={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            px: 1.25,
+            py: 0.4,
+            borderRadius: "6px",
+            bgcolor: "#0F172A",
+            color: "#FFFFFF",
+            fontSize: "0.6875rem",
+            fontWeight: 800,
+            letterSpacing: "0.06em",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+          }}
+        >
+          {domainBadge}
+        </Box>
+
+        {/* Top-Right: Brand Pill */}
+        <Box
+          sx={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            px: 1.25,
+            py: 0.4,
+            borderRadius: "6px",
+            bgcolor: "rgba(255, 255, 255, 0.9)",
+            color: "#0F172A",
+            fontSize: "0.6875rem",
+            fontWeight: 700,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+          }}
+        >
+          {brandName}
+        </Box>
       </Box>
-      <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", p: 2 }}>
-        <Typography variant="h6" component="h3" sx={{ mb: 1, fontWeight: 600, lineHeight: 1.3 }}>
+
+      {/* Content Area */}
+      <CardContent sx={{ p: 2.5, flex: 1, display: "flex", flexDirection: "column" }}>
+        {/* Title */}
+        <Typography
+          variant="h6"
+          component="h3"
+          sx={{
+            fontWeight: 700,
+            color: "#0F172A",
+            fontSize: "1rem",
+            lineHeight: 1.35,
+            mb: 1,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
           {product.title}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          {brandName}
-        </Typography>
+
+        {/* Description snippet */}
         {product.description && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#64748B",
+              fontSize: "0.8125rem",
+              lineHeight: 1.4,
+              mb: 2,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
             {product.description}
           </Typography>
         )}
+
+        {/* Price Row */}
         {bestOffer && (
-          <Box sx={{ mb: 2, display: "flex", alignItems: "baseline", gap: 1 }}>
-            <Typography variant="h6" color="primary" sx={{ fontWeight: 700 }}>
+          <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, mb: 2, mt: "auto" }}>
+            <Typography
+              sx={{
+                fontWeight: 800,
+                color: "#0F172A",
+                fontSize: "1.375rem",
+                lineHeight: 1,
+              }}
+            >
               {formatPrice(bestOffer.price)}
             </Typography>
-            <Chip
-              label={bestOffer.domain}
-              size="small"
-              variant="outlined"
-              color="default"
-            />
+            <Typography variant="caption" sx={{ color: "#16A34A", fontWeight: 700 }}>
+              Live Price
+            </Typography>
           </Box>
         )}
-        <Box sx={{ mt: "auto", display: "flex", gap: 1 }}>
+
+        {/* Actions Row */}
+        <Box sx={{ display: "flex", gap: 1, mt: bestOffer ? 0 : "auto" }}>
           {bestOffer && (
             <Button
               variant="contained"
@@ -237,7 +487,17 @@ function ProductCard({
               href={bestOffer.url}
               target="_blank"
               rel="noopener noreferrer"
-              startIcon={<LaunchIcon fontSize="small" />}
+              endIcon={<LaunchIcon fontSize="small" />}
+              sx={{
+                bgcolor: "#0F172A",
+                color: "#FFFFFF",
+                fontWeight: 700,
+                borderRadius: "10px",
+                fontSize: "0.8125rem",
+                py: 0.75,
+                textTransform: "none",
+                "&:hover": { bgcolor: "#1E293B" },
+              }}
             >
               View Offer
             </Button>
@@ -245,8 +505,16 @@ function ProductCard({
           <Button
             variant="outlined"
             size="small"
-            fullWidth
-            startIcon={<FavoriteIcon fontSize="small" />}
+            startIcon={<FavoriteBorderIcon fontSize="small" />}
+            sx={{
+              minWidth: 44,
+              px: 1.5,
+              borderRadius: "10px",
+              borderColor: "#CBD5E1",
+              color: "#475569",
+              "&:hover": { borderColor: "#0F172A", bgcolor: "#F8FAFC" },
+            }}
+            aria-label="Add to watchlist"
           >
             Watch
           </Button>

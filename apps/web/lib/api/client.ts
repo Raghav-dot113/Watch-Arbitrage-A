@@ -28,6 +28,9 @@ async function fetchWithSessionRecovery(
   if (organizationId && !headers.has("X-Organization-ID")) {
     headers.set("X-Organization-ID", organizationId);
   }
+  if (authToken && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
   const requestInit = { ...init, headers };
   const response = await globalThis.fetch(input, requestInit);
   if (response.status !== 401 || typeof window === "undefined") {

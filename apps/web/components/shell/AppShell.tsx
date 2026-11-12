@@ -38,13 +38,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <AppSidebar />
 
       {/* Main Column */}
-      <div className="flex flex-col flex-1 min-w-0 min-h-0">
+      <div className="flex flex-col flex-1 min-w-0 min-h-0 bg-[#F8FAFC]">
         {/* Desktop AppBar */}
         <AppBar
           position="static"
           elevation={0}
           sx={{
             display: { xs: "none", lg: "block" },
+            bgcolor: "#FFFFFF",
             borderBottom: "1px solid",
             borderColor: "divider",
             boxShadow: "none",
@@ -54,13 +55,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Box sx={{ flexGrow: 1 }} />
             <Avatar
               sx={{
-                width: 32,
-                height: 32,
-                fontSize: 16,
-                bgcolor: "primary.main",
-                color: "primary.contrastText",
+                width: 34,
+                height: 34,
+                fontSize: 15,
+                fontWeight: 600,
+                bgcolor: "#0F172A",
+                color: "#F8FAFC",
                 cursor: "pointer",
-                "&:hover": { bgcolor: "primary.dark" },
+                border: "1px solid #E2E8F0",
+                "&:hover": { bgcolor: "#1E293B" },
               }}
               onClick={handleUserMenuOpen}
               aria-label="Open user menu"

@@ -32,11 +32,11 @@ export function NavLinks({ onItemClick }: NavLinksProps) {
         return (
           <React.Fragment key={item.href}>
             {isSettings && (
-              <Box sx={{ mt: 2, mb: 2, px: 2 }}>
-                <Divider />
+              <Box sx={{ mt: 2, mb: 2, px: 1 }}>
+                <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.08)' }} />
               </Box>
             )}
-            <ListItem disablePadding sx={{ mb: 0.5 }}>
+            <ListItem disablePadding sx={{ mb: 0.75 }}>
               <ListItemButton
                 component={Link}
                 href={item.href}
@@ -44,32 +44,22 @@ export function NavLinks({ onItemClick }: NavLinksProps) {
                 onClick={onItemClick}
                 aria-current={active ? (pathname === item.href ? 'page' : 'location') : undefined}
                 sx={{
-                  borderRadius: 1,
-                  py: 0.75,
-                  px: 1.5,
-                  position: 'relative',
-                  color: active ? 'primary.main' : 'text.secondary',
+                  borderRadius: 2.5,
+                  py: 1,
+                  px: 2,
+                  color: active ? '#F59E0B' : '#94A3B8',
+                  bgcolor: active ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
                   transition: 'all 0.15s ease-in-out',
                   '&:hover': {
-                    bgcolor: 'action.hover',
-                    color: 'text.primary',
+                    bgcolor: active ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                    color: active ? '#F59E0B' : '#F1F5F9',
                   },
                   '&.Mui-selected': {
-                    bgcolor: 'action.selected',
-                    color: 'primary.main',
+                    bgcolor: 'rgba(255, 255, 255, 0.08)',
+                    color: '#F59E0B',
                     fontWeight: 600,
                     '&:hover': {
-                      bgcolor: 'action.selected',
-                    },
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      left: 0,
-                      top: '20%',
-                      bottom: '20%',
-                      width: 2,
-                      bgcolor: 'primary.main',
-                      borderRadius: '0 2px 2px 0',
+                      bgcolor: 'rgba(255, 255, 255, 0.12)',
                     },
                   },
                 }}
@@ -77,7 +67,7 @@ export function NavLinks({ onItemClick }: NavLinksProps) {
                 <ListItemIcon
                   sx={{
                     minWidth: 36,
-                    color: 'inherit',
+                    color: active ? '#F59E0B' : '#94A3B8',
                   }}
                 >
                   <Icon fontSize="small" />

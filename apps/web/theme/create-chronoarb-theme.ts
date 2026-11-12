@@ -1,5 +1,6 @@
 import { createTheme } from '@mui/material/styles';
 import {
+  semanticColors,
   darkSemanticColors,
   typography,
   spacing,
@@ -34,28 +35,59 @@ export const theme = createTheme({
     colorSchemeSelector: 'class',
   },
   palette: {
-    mode: 'dark',
-    background: darkSemanticColors.background,
-    text: darkSemanticColors.text,
-    divider: darkSemanticColors.divider,
-    primary: darkSemanticColors.primary,
-    success: darkSemanticColors.success,
-    warning: darkSemanticColors.warning,
-    error: darkSemanticColors.error,
-    info: darkSemanticColors.info,
+    mode: 'light',
+    background: {
+      default: '#F8FAFC',
+      paper: '#FFFFFF',
+    },
+    text: {
+      primary: '#0F172A',
+      secondary: '#64748B',
+    },
+    divider: '#E2E8F0',
+    primary: {
+      main: '#2563EB',
+      light: '#3B82F6',
+      dark: '#1D4ED8',
+      contrastText: '#FFFFFF',
+    },
+    success: {
+      main: '#16A34A',
+      light: '#22C55E',
+      dark: '#15803D',
+      contrastText: '#FFFFFF',
+    },
+    warning: {
+      main: '#F59E0B',
+      light: '#FBBF24',
+      dark: '#D97706',
+      contrastText: '#FFFFFF',
+    },
+    error: {
+      main: '#DC2626',
+      light: '#EF4444',
+      dark: '#B91C1C',
+      contrastText: '#FFFFFF',
+    },
+    info: {
+      main: '#0284C7',
+      light: '#38BDF8',
+      dark: '#0369A1',
+      contrastText: '#FFFFFF',
+    },
     opportunityPositive: {
-      main: darkSemanticColors.chronoarb.opportunityPositive,
+      main: '#16A34A',
     },
     opportunityRisk: {
-      main: darkSemanticColors.chronoarb.opportunityRisk,
+      main: '#DC2626',
     },
     action: {
-      active: darkSemanticColors.action.active,
-      hover: darkSemanticColors.action.hover,
-      selected: darkSemanticColors.action.selected,
-      disabled: darkSemanticColors.action.disabled,
-      disabledBackground: darkSemanticColors.action.disabledBackground,
-      focus: darkSemanticColors.action.focus,
+      active: '#64748B',
+      hover: '#F1F5F9',
+      selected: '#E2E8F0',
+      disabled: '#CBD5E1',
+      disabledBackground: '#F1F5F9',
+      focus: '#94A3B8',
     },
   },
   typography: {
@@ -81,8 +113,8 @@ export const theme = createTheme({
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          backgroundColor: darkSemanticColors.background.default,
-          color: darkSemanticColors.text.primary,
+          backgroundColor: '#F8FAFC',
+          color: '#0F172A',
         },
       },
     },
@@ -90,9 +122,21 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           boxShadow: 'none',
+          borderRadius: 10,
+          fontWeight: 600,
           '&:hover': {
             boxShadow: 'none',
           },
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#FFFFFF',
+          borderColor: '#E2E8F0',
+          borderRadius: 16,
+          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05)',
         },
       },
     },
@@ -100,44 +144,25 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: 'none',
+          backgroundColor: '#FFFFFF',
         },
       },
     },
     MuiDrawer: {
       styleOverrides: {
         paper: {
-          backgroundColor: darkSemanticColors.background.sidebar,
-          borderRight: `1px solid ${darkSemanticColors.divider}`,
-        },
-      },
-    },
-    MuiListItemButton: {
-      styleOverrides: {
-        root: {
-          '&:hover': {
-            backgroundColor: darkSemanticColors.action.hover,
-          },
-          '&.Mui-selected': {
-            backgroundColor: darkSemanticColors.action.selected,
-            '&:hover': {
-              backgroundColor: darkSemanticColors.action.selected,
-            },
-          },
-        },
-      },
-    },
-    MuiListItemIcon: {
-      styleOverrides: {
-        root: {
-          color: 'inherit',
+          backgroundColor: '#0F172A',
+          borderRight: '1px solid #1E293B',
+          color: '#FFFFFF',
         },
       },
     },
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: darkSemanticColors.background.sidebar,
-          borderBottom: `1px solid ${darkSemanticColors.divider}`,
+          backgroundColor: '#FFFFFF',
+          borderBottom: '1px solid #E2E8F0',
+          color: '#0F172A',
           boxShadow: 'none',
         },
       },
@@ -152,7 +177,7 @@ export const theme = createTheme({
     MuiDivider: {
       styleOverrides: {
         root: {
-          borderColor: darkSemanticColors.divider,
+          borderColor: '#E2E8F0',
         },
       },
     },
@@ -160,6 +185,7 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           fontWeight: 500,
+          borderRadius: 8,
         },
       },
     },

@@ -4,6 +4,7 @@ import { verifySession, SESSION_COOKIE } from "./lib/session";
 
 const PROTECTED_PREFIXES = [
   "/opportunities",
+  "/search",
   "/watches",
   "/alerts",
   "/activity",

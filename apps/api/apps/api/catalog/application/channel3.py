@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class _Channel3Model(BaseModel):
@@ -12,8 +12,9 @@ class _Channel3Model(BaseModel):
 
 
 class Channel3Price(_Channel3Model):
-    amount: Decimal
-    currency: str
+    amount: Decimal = Field(validation_alias=AliasChoices("amount", "price"))
+    currency: str = "USD"
+    compare_at_price: Decimal | None = None
 
 
 class Channel3Brand(_Channel3Model):

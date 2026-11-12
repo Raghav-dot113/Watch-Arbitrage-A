@@ -73,6 +73,7 @@ export const semanticColors = {
   background: {
     default: colors.slate[50],
     paper: colors.white,
+    sidebar: colors.slate[900],
   },
   text: {
     primary: colors.slate[900],

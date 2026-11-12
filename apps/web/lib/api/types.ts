@@ -385,8 +385,10 @@ export interface DuplicateGroup {
 }
 
 export interface Channel3Price {
-  amount: string;
+  amount?: string;
+  price?: number | string;
   currency: string;
+  compare_at_price?: number | string | null;
 }
 
 export interface Channel3Brand {
