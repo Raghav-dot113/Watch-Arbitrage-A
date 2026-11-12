@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
+
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
         env_prefix="CHRONOARB_",
         extra="ignore",
@@ -48,6 +52,24 @@ class Settings(BaseSettings):
     # issues with Python 3.14 as of 2026-08-03. Production must override via
     # CHRONOARB_DATABASE_URL=postgresql+asyncpg://... (CI runs Python 3.13).
     database_url: str = "sqlite+aiosqlite:///chronoarb.db"
+
+    @field_validator("database_url")
+    @classmethod
+    def resolve_relative_sqlite_database_path(cls, value: str) -> str:
+        url = make_url(value)
+        database = url.database
+        if (
+            url.get_backend_name() != "sqlite"
+            or not database
+            or database == ":memory:"
+            or database.startswith("file:")
+        ):
+            return value
+
+        database_path = Path(database)
+        if not database_path.is_absolute():
+            database_path = PROJECT_ROOT / database_path
+        return url.set(database=str(database_path.resolve())).render_as_string(hide_password=False)
 
     @field_validator("auth_token_ttl_seconds")
     @classmethod

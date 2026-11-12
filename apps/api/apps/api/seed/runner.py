@@ -13,7 +13,7 @@ from apps.api.billing.infrastructure.models import Subscription
 from apps.api.catalog.infrastructure.models import Brand, Reference, Source
 from apps.api.feedback.infrastructure.models import Feedback, TradeOutcome
 from apps.api.identity.infrastructure.models import Membership, Organization, User
-from apps.api.infrastructure.database import async_session
+from apps.api.infrastructure.database import async_session, initialize_dev_sqlite_schema
 from apps.api.listings.infrastructure.models import (
     NormalizedListing,
     ParsedListing,
@@ -810,6 +810,7 @@ async def seed_database(session: AsyncSession | None = None) -> dict[str, int]:
 
     own_session = session is None
     if own_session:
+        await initialize_dev_sqlite_schema()
         async with async_session() as session:
             return await _seed_within_session(session, counts)
     assert session is not None
@@ -890,6 +891,7 @@ async def reset_and_seed(session: AsyncSession | None = None) -> dict[str, int]:
     """
     own_session = session is None
     if own_session:
+        await initialize_dev_sqlite_schema()
         async with async_session() as session:
             return await _reset_and_seed_within_session(session)
     assert session is not None
